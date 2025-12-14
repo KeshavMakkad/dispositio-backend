@@ -1,4 +1,3 @@
-from dotenv import find_dotenv, load_dotenv
 from enum import StrEnum, auto
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -20,6 +19,9 @@ class GlobalConfig(BaseSettings):
     
     LOG_LEVEL: LogLevel = Field(default=LogLevel.debug)
     RELOAD: bool = Field(default=True)
+    
+    HOST: str = Field(default="0.0.0.0")
+    PORT: int = Field(default=3000)
 
     DB_HOST: str
     DB_PORT: int

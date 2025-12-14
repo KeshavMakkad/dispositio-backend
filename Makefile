@@ -16,6 +16,7 @@ PYTHON := python
 # Phony targets
 # -------------------------------------------------
 .PHONY: help run format clean db_revise db_upgrade db_downgrade db_history
+.SILENT: clean
 
 
 # -------------------------------------------------
