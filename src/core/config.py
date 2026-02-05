@@ -28,7 +28,7 @@ class GlobalConfig(BaseSettings):
     DB_NAME: str
     DB_USER: str
     DB_SCHEMA: str
-    DB_PASSWORD: str
+    DB_PASSWORD: str = Field(default="")
 
 
     CREARE_MODELS: bool
@@ -39,6 +39,6 @@ class GlobalConfig(BaseSettings):
         extra="ignore"
     )
 
-settings: GlobalConfig = ()
+settings: GlobalConfig = GlobalConfig()
 
 __all__ = ["settings"]
