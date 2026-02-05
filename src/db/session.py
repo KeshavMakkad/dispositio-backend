@@ -1,111 +1,72 @@
 """Database session management utilities."""
 
-from contextlib import contextmanager
-from typing import Generator
-
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.engine.base import Engine
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import text
+from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm.session import Session, sessionmaker
 
 from core.db_core import engine
+from contextvars import ContextVar
 
-# Create a configured "SessionLocal" class
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine,
-    expire_on_commit=False,
-)
+# Context variable for scoping sessions
+context: ContextVar[str] = ContextVar("session_context", default="default")
+
+SQLALCHEMY_SESSION_OPTIONS = {
+    "autocommit": False,
+    "autoflush": False,
+    "expire_on_commit": False,
+}
 
 
-def get_db() -> Generator[Session, None, None]:
+def get_session(read_only: bool = False) -> Session:
     """
-    Dependency function that yields a database session.
+    Get a database session.
     
-    Usage in FastAPI:
-        @app.get("/items")
-        def get_items(db: Session = Depends(get_db)):
-            # Use db session here
-            pass
+    Args:
+        read_only: If True, returns a read-only session with automatic rollback
     
-    Yields:
+    Returns:
         Session: SQLAlchemy database session
     """
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    session_engine = engine
+    
+    session = scoped_session(
+        sessionmaker(bind=session_engine, **SQLALCHEMY_SESSION_OPTIONS),
+        scopefunc=lambda: context.get(),
+    )()
+    
+    if read_only:
+        session.execute(text("SET TRANSACTION READ ONLY"))
+    
+    return session
 
 
-@contextmanager
-def get_db_context() -> Generator[Session, None, None]:
+def get_db_health(engine: Engine) -> bool | None:
     """
-    Context manager for database sessions.
+    Check database health.
     
-    Usage:
-        with get_db_context() as db:
-            # Use db session here
-            db.query(Model).all()
-    
-    Yields:
-        Session: SQLAlchemy database session
-    """
-    db = SessionLocal()
-    try:
-        yield db
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
-    finally:
-        db.close()
-
-
-class DatabaseSession:
-    """
-    Database session manager class for non-FastAPI contexts.
-    
-    Usage:
-        db_manager = DatabaseSession()
-        with db_manager.session() as db:
-            # Use db session here
-            results = db.query(Model).all()
-    """
-    
-    def __init__(self):
-        """Initialize the database session manager."""
-        self._session_factory = SessionLocal
-    
-    @contextmanager
-    def session(self) -> Generator[Session, None, None]:
-        """
-        Get a database session with automatic commit/rollback.
+    Args:
+        engine: SQLAlchemy engine to check
         
-        Yields:
-            Session: SQLAlchemy database session
-        """
-        session = self._session_factory()
-        try:
-            yield session
-            session.commit()
-        except Exception:
-            session.rollback()
-            raise
-        finally:
-            session.close()
+    Returns:
+        bool | None: True if healthy, False if unhealthy, None if error
+    """
+    try:
+        with engine.connect():
+            return engine.pool.overflow() < engine.pool._max_overflow
+    except (SQLAlchemyError, ConnectionRefusedError):
+        return None
+
+
+def get_db_status(engine: Engine) -> str:
+    """
+    Get database pool status.
     
-    def get_session(self) -> Session:
-        """
-        Get a raw database session (caller is responsible for closing).
+    Args:
+        engine: SQLAlchemy engine to check
         
-        Returns:
-            Session: SQLAlchemy database session
-        """
-        return self._session_factory()
-
-
-__all__ = [
-    "SessionLocal",
-    "get_db",
-    "get_db_context",
-    "DatabaseSession",
-]
+    Returns:
+        str: Pool status string
+    """
+    return engine.pool.status()
