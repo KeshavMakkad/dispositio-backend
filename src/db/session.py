@@ -1,7 +1,6 @@
 """Database session management utilities."""
 
-from sqlalchemy.engine.base import Engine
-from sqlalchemy.exc import SQLAlchemyError
+
 from sqlalchemy import text
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm.session import Session, sessionmaker
@@ -19,15 +18,12 @@ SQLALCHEMY_SESSION_OPTIONS = {
 }
 
 
-def get_session(read_only: bool = False) -> Session:
+def get_session() -> Session:
     """
-    Get a database session.
-    
-    Args:
-        read_only: If True, returns a read-only session with automatic rollback
+    Get a read-only database session.
     
     Returns:
-        Session: SQLAlchemy database session
+        Session: SQLAlchemy database session with read-only access
     """
     session_engine = engine
     
@@ -36,37 +32,6 @@ def get_session(read_only: bool = False) -> Session:
         scopefunc=lambda: context.get(),
     )()
     
-    if read_only:
-        session.execute(text("SET TRANSACTION READ ONLY"))
+    session.execute(text("SET TRANSACTION READ ONLY"))
     
     return session
-
-
-def get_db_health(engine: Engine) -> bool | None:
-    """
-    Check database health.
-    
-    Args:
-        engine: SQLAlchemy engine to check
-        
-    Returns:
-        bool | None: True if healthy, False if unhealthy, None if error
-    """
-    try:
-        with engine.connect():
-            return engine.pool.overflow() < engine.pool._max_overflow
-    except (SQLAlchemyError, ConnectionRefusedError):
-        return None
-
-
-def get_db_status(engine: Engine) -> str:
-    """
-    Get database pool status.
-    
-    Args:
-        engine: SQLAlchemy engine to check
-        
-    Returns:
-        str: Pool status string
-    """
-    return engine.pool.status()

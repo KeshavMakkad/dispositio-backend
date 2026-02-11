@@ -25,6 +25,7 @@ psycopg2-binary==2.9.11
 pydantic==2.12.5
 pydantic-settings==2.12.0
 pydantic_core==2.41.5
+pyhumps==3.8.0
 PySocks==1.7.1
 python-dotenv==1.2.1
 requests==2.32.5

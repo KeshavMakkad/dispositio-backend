@@ -1,6 +1,11 @@
 from enum import StrEnum, auto
+from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Get the backend directory (parent of src)
+BACKEND_DIR = Path(__file__).parent.parent.parent
+ENV_FILE = BACKEND_DIR / ".env"
 
 class Environment(StrEnum):
     dev = auto()
@@ -34,7 +39,7 @@ class GlobalConfig(BaseSettings):
     CREARE_MODELS: bool
     
     model_config = SettingsConfigDict (
-        env_file=".env",
+        env_file=str(ENV_FILE),
         env_ignore_empty=True,
         extra="ignore"
     )
