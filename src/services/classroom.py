@@ -1,0 +1,40 @@
+from fastapi import Request
+from uuid import UUID
+
+from core.exceptions import BadRequestException
+from db.models import Classroom
+from schemas.classroom import AddClassRoomRequest
+from utils.db_utils import get_db_session
+
+# Dummy UUID for system operations (to be replaced later)
+SYSTEM_USER_ID = UUID("00000000-0000-0000-0000-000000000000")
+
+
+def get_class_layout(class_name: str):
+    """
+    Get the layout of a specific class.
+    """
+    # Logic to retrieve and return the layout of the specified class
+    pass
+
+async def create_classroom(request: Request, args: AddClassRoomRequest):
+    with get_db_session(read_only=False) as session:
+        existing_classroom = session.query(Classroom).filter_by(classroom_name=args.name).first()
+        if existing_classroom:
+            raise BadRequestException("Classroom with this name already exists.")
+        
+        # Convert Pydantic models to dictionaries for JSON serialization
+        class_layout_data = [item.model_dump() for item in args.class_layout]
+        
+        new_classroom = Classroom(
+            classroom_name=args.name,
+            class_layout=class_layout_data,
+            columns_count=args.columns_count,
+            max_rows=args.max_rows,
+            capacity=args.capacity,
+            updated_by=SYSTEM_USER_ID,
+            created_by=SYSTEM_USER_ID
+        )
+        session.add(new_classroom)
+    
+    return {"message": "Classroom created successfully."}

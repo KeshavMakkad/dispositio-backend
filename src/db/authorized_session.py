@@ -21,9 +21,6 @@ def get_authorized_session() -> Session:
     """
     Get an authorized database session for write operations.
     
-    Args:
-        read_only: If True, returns a read-only session
-    
     Returns:
         Session: SQLAlchemy database session with write permissions
     """
