@@ -1,8 +1,9 @@
 from collections.abc import Callable
 from enum import EnumType
 from functools import lru_cache
+from db.models import User
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, func, text
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, func, text
 from sqlalchemy.dialects.postgresql import UUID
 
 from utils.datetime_utils import get_current_datetime
@@ -32,8 +33,19 @@ class TimestampColumn:
 
 
 class AuditColumn:
-    created_by = Column("created_by", UUID(as_uuid=True), nullable=False)
-    updated_by = Column("updated_by", UUID(as_uuid=True), nullable=False, index=True)
+    created_by = Column(
+        "created_by",
+        UUID(as_uuid=True),
+        ForeignKey(User.id),
+        nullable=False,
+    )
+    updated_by = Column(
+        "updated_by",
+        UUID(as_uuid=True),
+        ForeignKey(User.id),
+        nullable=False,
+        index=True,
+    )
 
 
 class ChangeLogColumn:
