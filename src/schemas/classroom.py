@@ -2,8 +2,9 @@ from schemas.common import CamelCaseModel
 
 
 class ClassLayoutItem(CamelCaseModel):
-    row1_data: str
-    row2_data: str | int
+    column_name: str
+    column_capacity: str | int
+    column_set: str
 
 
 class AddClassRoomRequest(CamelCaseModel):

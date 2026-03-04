@@ -10,12 +10,15 @@ from utils.db_utils import get_db_session
 SYSTEM_USER_ID = UUID("00000000-0000-0000-0000-000000000000")
 
 
-def get_class_layout(class_name: str):
+def get_default_class_layout(class_name: str):
     """
     Get the layout of a specific class.
     """
-    # Logic to retrieve and return the layout of the specified class
-    pass
+    with get_db_session(read_only=True) as session:
+        classroom = session.query(Classroom).filter_by(classroom_name=class_name).first()
+        if not classroom:
+            raise BadRequestException("Classroom not found.")
+        return classroom.class_layout
 
 async def create_classroom(request: Request, args: AddClassRoomRequest):
     with get_db_session(read_only=False) as session:
