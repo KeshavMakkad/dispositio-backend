@@ -1,17 +1,30 @@
 import random
+from dataclasses import dataclass, field
 from fastapi import Request
 
+from schemas.classroom import ClassLayoutItem
+from schemas.seating import ClassroomLayouts
 from schemas.seating import CreateSeatingRequest
-from services.classroom import get_default_class_layout
+from services.classroom import get_default_class_details
 
 
+@dataclass
 class ClassStudentAssignment:
     classroom_name: str
-    layout: list
+    layout: list[ClassLayoutItem]
     set_one_capacity: int
     set_two_capacity: int
-    set_one_assigned_students: list
-    set_two_assigned_students: list
+    set_one_assigned_students: list[str] = field(default_factory=list)
+    set_two_assigned_students: list[str] = field(default_factory=list)
+
+
+def _to_assignment(layout: ClassroomLayouts) -> ClassStudentAssignment:
+    return ClassStudentAssignment(
+        classroom_name=layout.classroom_name,
+        layout=layout.layout,
+        set_one_capacity=layout.set_one_capacity,
+        set_two_capacity=layout.set_two_capacity,
+    )
 
 
 def prepare_class_layouts(args: CreateSeatingRequest) -> dict[str, ClassStudentAssignment]:
@@ -20,12 +33,15 @@ def prepare_class_layouts(args: CreateSeatingRequest) -> dict[str, ClassStudentA
     If a custom layout exists use it, otherwise load default layout.
     """
     class_layouts: dict[str, ClassStudentAssignment] = {}
+    custom_layouts = {
+        detail.classroom_name: detail for detail in (args.classroom_details or [])
+    }
 
     for classroom in args.classrooms_list:
-        if args.classroom_layouts and classroom in args.classroom_layouts:
-            class_layouts[classroom] = args.classroom_layouts[classroom]
+        if classroom in custom_layouts:
+            class_layouts[classroom] = _to_assignment(custom_layouts[classroom])
         else:
-            class_layouts[classroom] = get_default_class_layout(classroom)
+            class_layouts[classroom] = _to_assignment(get_default_class_details(classroom))
 
     return class_layouts
 
@@ -124,19 +140,27 @@ def assign_students_to_classrooms(
         total_classes -= 1
 
 def generate_seating_for_classroom(classroom: str, layout: ClassStudentAssignment):
+    _ = classroom
     class_seating = []
+
     for col in layout.layout:
-        seating = []
-        col_name = col[0]
-        seating[0] = col_name
-        for _ in range(col.column_capacity):
-            if col.column_set == "set_one" and layout.set_one_assigned_students:
-                seating.append(layout.set_one_assigned_students.random().pop())
-            elif col.column_set == "set_two" and layout.set_two_assigned_students:
-                seating.append(layout.set_two_assigned_students.random().pop())
-            else :
+        seating = [col.column_name]
+
+        try:
+            column_capacity = int(col.column_capacity)
+        except (TypeError, ValueError):
+            column_capacity = 0
+
+        for _ in range(column_capacity):
+            if col.column_set == "Set 1" and layout.set_one_assigned_students:
+                seating.append(layout.set_one_assigned_students.pop())
+            elif col.column_set == "Set 2" and layout.set_two_assigned_students:
+                seating.append(layout.set_two_assigned_students.pop())
+            else:
                 seating.append("")
+
         class_seating.append(seating)
+
     return class_seating
 
 def generate_seating(class_layouts: dict[str, ClassStudentAssignment]):

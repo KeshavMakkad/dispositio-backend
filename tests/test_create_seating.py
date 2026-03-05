@@ -1,4 +1,5 @@
 import csv
+import json
 import os
 import sys
 
@@ -13,6 +14,7 @@ client = TestClient(app)
 TESTS_DIR = os.path.dirname(__file__)
 STUDENTS_LIST_1_CSV = os.path.join(TESTS_DIR, "students_list_1.csv")
 STUDENTS_LIST_2_CSV = os.path.join(TESTS_DIR, "students_list_2.csv")
+DEBUG_OUTPUT_FILE = os.path.join(TESTS_DIR, "create_seating_debug.jsonl")
 
 CREATE_SEATING_URL = "/api/v1/seating/seating/create"
 
@@ -37,6 +39,9 @@ def test_create_seating_with_default_layout():
     }
 
     response = client.post(CREATE_SEATING_URL, json=payload)
+
+    with open(DEBUG_OUTPUT_FILE, "a", encoding="utf-8") as f:
+        f.write(json.dumps(response.json()) + "\n")
 
     assert response.status_code == 200, (
         f"Expected 200, got {response.status_code}: {response.text}"

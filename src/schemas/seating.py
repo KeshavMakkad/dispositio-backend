@@ -11,4 +11,4 @@ class CreateSeatingRequest(CamelCaseModel):
     student_list_one: list
     student_list_two: list
     classrooms_list: list
-    classroom_layouts: list[ClassroomLayouts] | None = None
+    classroom_details: list[ClassroomLayouts] | None = None

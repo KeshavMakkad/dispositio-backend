@@ -13,7 +13,9 @@ class Classroom(TimestampColumn, IsActiveColumn, AuditColumn, Base):
     class_layout = Column(JSON, nullable=False, default={})
     columns_count = Column(Integer, nullable=False)
     max_rows = Column(Integer, nullable=False)
-    capacity = Column(Integer, nullable=False)
-    
+    total_capacity = Column(Integer, nullable=False)
+    set_one_capacity = Column(Integer, nullable=False, default=0)
+    set_two_capacity = Column(Integer, nullable=False, default=0)
+
     __tablename__ = "classrooms"
     
