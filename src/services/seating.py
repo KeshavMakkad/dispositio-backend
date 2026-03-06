@@ -141,25 +141,58 @@ def assign_students_to_classrooms(
 
 def generate_seating_for_classroom(classroom: str, layout: ClassStudentAssignment):
     _ = classroom
+
+    columns = layout.layout
     class_seating = []
 
-    for col in layout.layout:
-        seating = [col.column_name]
+    # -------- Header Row --------
+    header = []
+    capacities = []
 
-        try:
-            column_capacity = int(col.column_capacity)
-        except (TypeError, ValueError):
-            column_capacity = 0
+    for col in columns:
+        if col.column_name == "-":
+            header.append("-")
+            capacities.append(0)
+        else:
+            header.append(col.column_name)
 
-        for _ in range(column_capacity):
+            try:
+                capacities.append(int(col.column_capacity))
+            except (TypeError, ValueError):
+                capacities.append(0)
+
+    class_seating.append(header)
+
+    # -------- Max rows --------
+    max_rows = max(capacities) if capacities else 0
+
+    # -------- Generate rows --------
+    for row in range(max_rows):
+
+        row_seating = []
+
+        for idx, col in enumerate(columns):
+
+            if col.column_name == "-":
+                row_seating.append("-")
+                continue
+
+            capacity = capacities[idx]
+
+            if row >= capacity:
+                row_seating.append("")
+                continue
+
             if col.column_set == "Set 1" and layout.set_one_assigned_students:
-                seating.append(layout.set_one_assigned_students.pop())
-            elif col.column_set == "Set 2" and layout.set_two_assigned_students:
-                seating.append(layout.set_two_assigned_students.pop())
-            else:
-                seating.append("")
+                row_seating.append(layout.set_one_assigned_students.pop())
 
-        class_seating.append(seating)
+            elif col.column_set == "Set 2" and layout.set_two_assigned_students:
+                row_seating.append(layout.set_two_assigned_students.pop())
+
+            else:
+                row_seating.append("")
+
+        class_seating.append(row_seating)
 
     return class_seating
 
