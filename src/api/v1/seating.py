@@ -1,11 +1,17 @@
 import csv
 from pathlib import Path
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request, UploadFile, File, Form
+import json
 
 from core.exceptions import InternalServerErrorException
 from services.seating import create_seating_service
-from schemas.seating import CreateSeatingRequest
+from schemas.seating import CreateSeatingRequest, create_seating_form
+from utils.csv_utils import read_students_from_csv
+
+from db.models import Seating
+from utils.db_utils import get_db_session
+from uuid import UUID
 
 router: APIRouter = APIRouter()
 
@@ -20,11 +26,22 @@ def _read_students_from_csv(file_path: Path) -> list[str]:
                 students.append(email)
     return students
 
-@router.post("/seating/create")
-def create_seating(request: Request, args:CreateSeatingRequest):
-    """
-    Create a new seating arrangement.
-    """
+@router.post("/create")
+async def create_seating(
+    request: Request,
+    student_list_one: UploadFile = File(...),
+    student_list_two: UploadFile | None = File(None),
+    args: CreateSeatingRequest = Depends(create_seating_form),
+):
+    
+    # Parse CSV
+    content_one = await student_list_one.read()
+    args.student_list_one = read_students_from_csv(content_one)
+
+    if student_list_two:
+        content_two = await student_list_two.read()
+        args.student_list_two = read_students_from_csv(content_two)
+
     return create_seating_service(request, args)
 
 
@@ -33,21 +50,10 @@ def get_seating(request: Request, seating_id: str):
     """
     Temporarily generate seating arrangement from test CSVs.
     """
-    _ = seating_id
+    id = seating_id
 
-    project_root = Path(__file__).resolve().parents[3]
-    tests_dir = project_root / "tests"
-
-    student_list_one = _read_students_from_csv(tests_dir / "students_list_1.csv")
-    student_list_two = _read_students_from_csv(tests_dir / "students_list_2.csv")
-
-    if not student_list_one and not student_list_two:
-        raise InternalServerErrorException("No students loaded from test CSV files.")
-
-    args = CreateSeatingRequest(
-        student_list_one=student_list_one,
-        student_list_two=student_list_two,
-        classrooms_list=["Classroom A"],
-    )
-
-    return create_seating_service(request, args)
+    with get_db_session(read_only=True) as session:
+        seating = session.query(Seating).filter_by(id=id).first()
+        if not seating:
+            raise InternalServerErrorException("Seating arrangement not found.")
+        return seating.seating_arrangement

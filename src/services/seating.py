@@ -6,6 +6,9 @@ from schemas.classroom import ClassLayoutItem
 from schemas.seating import ClassroomLayouts
 from schemas.seating import CreateSeatingRequest
 from services.classroom import get_default_class_details
+from db.models import Seating
+from utils.db_utils import get_db_session
+from uuid import UUID
 
 
 @dataclass
@@ -52,7 +55,7 @@ def validate_capacity(args: CreateSeatingRequest, class_layouts: dict):
     """
 
     set_one_student_count = len(args.student_list_one)
-    set_two_student_count = len(args.student_list_two)
+    set_two_student_count = len(args.student_list_two or [])
 
     set_one_capacity = sum(layout.set_one_capacity for layout in class_layouts.values())
     set_two_capacity = sum(layout.set_two_capacity for layout in class_layouts.values())
@@ -73,7 +76,8 @@ def shuffle_students(args: CreateSeatingRequest):
     Shuffle students randomly before assigning.
     """
     student_list_one = args.student_list_one.copy()
-    student_list_two = args.student_list_two.copy()
+    # student_list_two is optional in the request model
+    student_list_two = (args.student_list_two or []).copy()
 
     random.shuffle(student_list_one)
     random.shuffle(student_list_two)
@@ -203,8 +207,6 @@ def generate_seating(class_layouts: dict[str, ClassStudentAssignment]):
         seating_plan[classroom] = class_seating
     return seating_plan
 
-
-
 def create_seating_service(request: Request, args: CreateSeatingRequest):
     """
     Main orchestration function
@@ -223,4 +225,14 @@ def create_seating_service(request: Request, args: CreateSeatingRequest):
 
     seating_plan = generate_seating(class_layouts)
 
-    return seating_plan
+    with get_db_session(read_only=False) as session:
+        seating = Seating(
+            seating_arrangement=seating_plan,
+            exam_name=args.exam_name,
+            exam_time=args.exam_time,
+            created_by=UUID('000000-000000-0000-0000-000000000000'),  # Placeholder, replace with actual user ID
+            updated_by=UUID('000000-000000-0000-0000-000000000000')   # Placeholder, replace with actual user ID
+        )
+        session.add(seating)
+
+    return {"message": "Seating arrangement created successfully.", "seating_plan": seating_plan}

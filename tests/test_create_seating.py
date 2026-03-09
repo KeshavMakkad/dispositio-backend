@@ -29,16 +29,21 @@ def read_students_from_csv(filepath: str) -> list[str]:
 
 
 def test_create_seating_with_default_layout():
-    student_list_one = read_students_from_csv(STUDENTS_LIST_1_CSV)
-    student_list_two = read_students_from_csv(STUDENTS_LIST_2_CSV)
+    with (
+        open(STUDENTS_LIST_1_CSV, "rb") as student_list_one_file,
+        open(STUDENTS_LIST_2_CSV, "rb") as student_list_two_file,
+    ):
+        files = {
+            "studentListOneFile": ("students_list_1.csv", student_list_one_file, "text/csv"),
+            "studentListTwoFile": ("students_list_2.csv", student_list_two_file, "text/csv"),
+        }
 
-    payload = {
-        "studentListOne": student_list_one,
-        "studentListTwo": student_list_two,
-        "classroomsList": ["Classroom A"],
-    }
+        data = [
+            ("classroomsList", "Classroom A"),
+            ("classroomsList", "Classroom B"),
+        ]
 
-    response = client.post(CREATE_SEATING_URL, json=payload)
+        response = client.post(CREATE_SEATING_URL, files=files, data=data)
 
     with open(DEBUG_OUTPUT_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(response.json()) + "\n")
