@@ -1,14 +1,26 @@
 import random
 from dataclasses import dataclass, field
-from fastapi import Request
-
-from schemas.classroom import ClassLayoutItem
-from schemas.seating import ClassroomLayouts, GetCapacityReqeust
-from schemas.seating import CreateSeatingRequest
-from services.classroom import get_default_class_details
-from db.models import Seating
-from utils.db_utils import get_db_session
 from uuid import UUID
+
+from core.constants import SYSTEM_USER_ID
+from core.exceptions import BadRequestException, NotFoundException
+from db.models import Seating
+from repositories.classroom import ClassroomRepository
+from repositories.seating import SeatingRepository
+from schemas.classroom import ClassLayoutItem
+from schemas.seating import (
+    ClassroomLayouts,
+    CreateSeatingRequest,
+    GetCapacityRequest,
+    SeatingListResponse,
+)
+from services.classroom import get_default_class_details
+from utils.db_utils import get_db_session
+
+
+# ---------------------------------------------------------------------------
+# Internal data structures
+# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -21,6 +33,11 @@ class ClassStudentAssignment:
     set_two_assigned_students: list[str] = field(default_factory=list)
 
 
+# ---------------------------------------------------------------------------
+# Private helpers
+# ---------------------------------------------------------------------------
+
+
 def _to_assignment(layout: ClassroomLayouts) -> ClassStudentAssignment:
     return ClassStudentAssignment(
         classroom_name=layout.classroom_name,
@@ -30,136 +47,102 @@ def _to_assignment(layout: ClassroomLayouts) -> ClassStudentAssignment:
     )
 
 
-def prepare_class_layouts(
+def _prepare_class_layouts(
     args: CreateSeatingRequest,
 ) -> dict[str, ClassStudentAssignment]:
-    """
-    Load layouts for classrooms.
-    If a custom layout exists use it, otherwise load default layout.
-    """
-    class_layouts: dict[str, ClassStudentAssignment] = {}
+    """Load layouts for each requested classroom (custom overrides first)."""
     custom_layouts = {
         detail.classroom_name: detail for detail in (args.classroom_details or [])
     }
 
+    class_layouts: dict[str, ClassStudentAssignment] = {}
     for classroom in args.classrooms_list:
-        if classroom in custom_layouts:
-            class_layouts[classroom] = _to_assignment(custom_layouts[classroom])
-        else:
-            class_layouts[classroom] = _to_assignment(
-                get_default_class_details(classroom)
-            )
+        source = custom_layouts.get(classroom) or get_default_class_details(classroom)
+        class_layouts[classroom] = _to_assignment(source)
 
     return class_layouts
 
 
-def validate_capacity(args: CreateSeatingRequest, class_layouts: dict):
-    """
-    Ensure classrooms have enough capacity for students.
-    """
-
-    set_one_student_count = len(args.student_list_one)
-    set_two_student_count = len(args.student_list_two or [])
-
-    set_one_capacity = sum(layout.set_one_capacity for layout in class_layouts.values())
-    set_two_capacity = sum(layout.set_two_capacity for layout in class_layouts.values())
-
-    if set_one_student_count <= 0 and set_two_student_count <= 0:
-        raise Exception("No students to seat.")
-
-    if (
-        set_two_student_count == 0
-        and set_one_student_count > set_one_capacity
-        or set_one_student_count == 0
-        and set_two_student_count > set_two_capacity
-        or set_one_student_count > set_one_capacity
-        and set_two_student_count > set_two_capacity
-    ):
-        raise Exception("Total students exceed total classroom capacity.")
-
-
-def shuffle_students(args: CreateSeatingRequest):
-    """
-    Shuffle students randomly before assigning.
-    """
-    student_list_one = args.student_list_one.copy()
-    # student_list_two is optional in the request model
-    student_list_two = (args.student_list_two or []).copy()
-
-    random.shuffle(student_list_one)
-    random.shuffle(student_list_two)
-
-    return student_list_one, student_list_two
-
-
-def assign_students_to_classrooms(
+def _validate_capacity(
+    args: CreateSeatingRequest,
     class_layouts: dict[str, ClassStudentAssignment],
-    student_list_one: list,
-    student_list_two: list,
-):
-    """
-    Evenly and randomly assign students to classrooms.
-    """
+) -> None:
+    """Raise if classrooms lack capacity for the given student lists."""
+    set_one_count = len(args.student_list_one)
+    set_two_count = len(args.student_list_two or [])
 
-    set_one_index = 0
-    set_two_index = 0
+    if set_one_count <= 0 and set_two_count <= 0:
+        raise BadRequestException("No students to seat.")
 
-    total_classes = len(class_layouts)
+    total_set_one_cap = sum(l.set_one_capacity for l in class_layouts.values())
+    total_set_two_cap = sum(l.set_two_capacity for l in class_layouts.values())
 
-    set_one_total = len(student_list_one)
-    set_two_total = len(student_list_two)
+    one_overflows = set_one_count > total_set_one_cap
+    two_overflows = set_two_count > total_set_two_cap
 
-    for classroom in class_layouts:
+    if (set_two_count == 0 and one_overflows) or (
+        set_one_count == 0 and two_overflows
+    ) or (one_overflows and two_overflows):
+        raise BadRequestException("Total students exceed total classroom capacity.")
 
-        layout = class_layouts[classroom]
 
-        layout.set_one_assigned_students = []
-        layout.set_two_assigned_students = []
+def _shuffle_students(
+    args: CreateSeatingRequest,
+) -> tuple[list[str], list[str]]:
+    """Return shuffled copies of both student lists."""
+    list_one = args.student_list_one.copy()
+    list_two = (args.student_list_two or []).copy()
+    random.shuffle(list_one)
+    random.shuffle(list_two)
+    return list_one, list_two
 
-        remaining_classes = total_classes
 
-        remaining_set_one = set_one_total - set_one_index
-        remaining_set_two = set_two_total - set_two_index
+def _assign_students_to_classrooms(
+    class_layouts: dict[str, ClassStudentAssignment],
+    student_list_one: list[str],
+    student_list_two: list[str],
+) -> None:
+    """Distribute students evenly across classrooms (mutates *class_layouts*)."""
+    set_one_idx = 0
+    set_two_idx = 0
+    remaining_classes = len(class_layouts)
+
+    for layout in class_layouts.values():
+        remaining_one = len(student_list_one) - set_one_idx
+        remaining_two = len(student_list_two) - set_two_idx
 
         if remaining_classes > 0:
-
             set_one_target = min(
                 layout.set_one_capacity,
-                (remaining_set_one + remaining_classes - 1) // remaining_classes,
+                (remaining_one + remaining_classes - 1) // remaining_classes,
             )
-
             set_two_target = min(
                 layout.set_two_capacity,
-                (remaining_set_two + remaining_classes - 1) // remaining_classes,
+                (remaining_two + remaining_classes - 1) // remaining_classes,
             )
-
         else:
             set_one_target = 0
             set_two_target = 0
 
         layout.set_one_assigned_students = student_list_one[
-            set_one_index : set_one_index + set_one_target
+            set_one_idx : set_one_idx + set_one_target
         ]
-
         layout.set_two_assigned_students = student_list_two[
-            set_two_index : set_two_index + set_two_target
+            set_two_idx : set_two_idx + set_two_target
         ]
 
-        set_one_index += set_one_target
-        set_two_index += set_two_target
+        set_one_idx += set_one_target
+        set_two_idx += set_two_target
+        remaining_classes -= 1
 
-        total_classes -= 1
 
-
-def generate_seating_for_classroom(classroom: str, layout: ClassStudentAssignment):
-    _ = classroom
-
+def _generate_seating_for_classroom(
+    layout: ClassStudentAssignment,
+) -> list[list[str]]:
+    """Build the 2-D seating grid (header + rows) for a single classroom."""
     columns = layout.layout
-    class_seating = []
-
-    # -------- Header Row --------
-    header = []
-    capacities = []
+    header: list[str] = []
+    capacities: list[int] = []
 
     for col in columns:
         if col.column_name == "-":
@@ -167,83 +150,67 @@ def generate_seating_for_classroom(classroom: str, layout: ClassStudentAssignmen
             capacities.append(0)
         else:
             header.append(col.column_name)
-
             try:
                 capacities.append(int(col.column_capacity))
             except (TypeError, ValueError):
                 capacities.append(0)
 
-    class_seating.append(header)
-
-    # -------- Max rows --------
+    rows: list[list[str]] = [header]
     max_rows = max(capacities) if capacities else 0
 
-    # -------- Generate rows --------
-    for row in range(max_rows):
-
-        row_seating = []
-
-        for idx, col in enumerate(columns):
-
+    for row_idx in range(max_rows):
+        row: list[str] = []
+        for col_idx, col in enumerate(columns):
             if col.column_name == "-":
-                row_seating.append("-")
-                continue
-
-            capacity = capacities[idx]
-
-            if row >= capacity:
-                row_seating.append("")
-                continue
-
-            if col.column_set == "Set 1" and layout.set_one_assigned_students:
-                row_seating.append(layout.set_one_assigned_students.pop())
-
+                row.append("-")
+            elif row_idx >= capacities[col_idx]:
+                row.append("")
+            elif col.column_set == "Set 1" and layout.set_one_assigned_students:
+                row.append(layout.set_one_assigned_students.pop())
             elif col.column_set == "Set 2" and layout.set_two_assigned_students:
-                row_seating.append(layout.set_two_assigned_students.pop())
-
+                row.append(layout.set_two_assigned_students.pop())
             else:
-                row_seating.append("")
+                row.append("")
+        rows.append(row)
 
-        class_seating.append(row_seating)
-
-    return class_seating
-
-
-def generate_seating(class_layouts: dict[str, ClassStudentAssignment]):
-    seating_plan = {}
-    for classroom, layout in class_layouts.items():
-        class_seating = generate_seating_for_classroom(classroom, layout)
-        seating_plan[classroom] = class_seating
-    return seating_plan
+    return rows
 
 
-def create_seating_service(request: Request, args: CreateSeatingRequest):
-    """
-    Main orchestration function
-    """
-    class_layouts = prepare_class_layouts(args)
+def _generate_seating(
+    class_layouts: dict[str, ClassStudentAssignment],
+) -> dict[str, list[list[str]]]:
+    return {
+        name: _generate_seating_for_classroom(layout)
+        for name, layout in class_layouts.items()
+    }
 
-    validate_capacity(args, class_layouts)
 
-    set_one_students, set_two_students = shuffle_students(args)
+# ---------------------------------------------------------------------------
+# Public service functions (called by route handlers)
+# ---------------------------------------------------------------------------
 
-    assign_students_to_classrooms(class_layouts, set_one_students, set_two_students)
 
-    seating_plan = generate_seating(class_layouts)
+def create_seating_service(args: CreateSeatingRequest) -> dict:
+    """Orchestrate the full seating-plan creation pipeline."""
+    class_layouts = _prepare_class_layouts(args)
+    _validate_capacity(args, class_layouts)
+
+    set_one, set_two = _shuffle_students(args)
+    _assign_students_to_classrooms(class_layouts, set_one, set_two)
+
+    seating_plan = _generate_seating(class_layouts)
 
     with get_db_session(read_only=False) as session:
-        seating = Seating(
-            seating_arrangement=seating_plan,
-            exam_name=args.exam_name,
-            exam_time=args.exam_time,
-            created_by=UUID(
-                "000000-000000-0000-0000-000000000000"
-            ),  # Placeholder, replace with actual user ID
-            updated_by=UUID(
-                "000000-000000-0000-0000-000000000000"
-            ),  # Placeholder, replace with actual user ID
+        repo = SeatingRepository(session)
+        repo.create(
+            Seating(
+                seating_arrangement=seating_plan,
+                exam_name=args.exam_name,
+                exam_time=args.exam_time,
+                created_by=SYSTEM_USER_ID,
+                updated_by=SYSTEM_USER_ID,
+            )
         )
-        session.add(seating)
 
     return {
         "message": "Seating arrangement created successfully.",
@@ -251,17 +218,43 @@ def create_seating_service(request: Request, args: CreateSeatingRequest):
     }
 
 
-def get_seating_capacity(request: Request, args: GetCapacityReqeust):
-    total_capacity = 0
+def get_seating_by_id(seating_id: UUID) -> dict:
+    """Fetch a single seating arrangement by its UUID."""
+    with get_db_session(read_only=True) as session:
+        repo = SeatingRepository(session)
+        seating = repo.get_by_id(seating_id)
+        if not seating:
+            raise NotFoundException("Seating arrangement not found.")
+        return seating.seating_arrangement
+
+
+def list_seatings() -> list[SeatingListResponse]:
+    """Return summary info for every seating arrangement."""
+    with get_db_session(read_only=True) as session:
+        repo = SeatingRepository(session)
+        seatings = repo.get_all_active()
+        return [
+            SeatingListResponse(
+                seating_id=s.id,
+                exam_name=s.exam_name,
+                exam_time=s.exam_time,
+            )
+            for s in seatings
+        ]
+
+
+def get_seating_capacity(args: GetCapacityRequest) -> dict:
+    """Aggregate set-one / set-two capacity across requested classrooms."""
     set_one_capacity = 0
     set_two_capacity = 0
+
     for classroom in args.classrooms_list:
         details = get_default_class_details(classroom)
-        total_capacity += details.set_one_capacity + details.set_two_capacity
         set_one_capacity += details.set_one_capacity
         set_two_capacity += details.set_two_capacity
+
     return {
-        "total_capacity": total_capacity,
+        "total_capacity": set_one_capacity + set_two_capacity,
         "set_one_capacity": set_one_capacity,
         "set_two_capacity": set_two_capacity,
     }

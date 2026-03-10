@@ -1,25 +1,34 @@
-from sqlalchemy import UUID, Column, DateTime, String, JSON, Integer
 from uuid import uuid4
-from utils.models import TimestampColumn, IsActiveColumn, AuditColumn
+
+from sqlalchemy import UUID, Column, DateTime, Integer, JSON, String
+
 from core.db_core import Base
+from utils.models import AuditColumn, IsActiveColumn, TimestampColumn
 
 
 class Classroom(TimestampColumn, IsActiveColumn, AuditColumn, Base):
+    __tablename__ = "classrooms"
+
     id = Column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid4)
     classroom_name = Column(String(255), nullable=False, unique=True)
-    class_layout = Column(JSON, nullable=False, default={})
+    class_layout = Column(JSON, nullable=False, default=dict)
     columns_count = Column(Integer, nullable=False)
     max_rows = Column(Integer, nullable=False)
     total_capacity = Column(Integer, nullable=False)
     set_one_capacity = Column(Integer, nullable=False, default=0)
     set_two_capacity = Column(Integer, nullable=False, default=0)
 
-    __tablename__ = "classrooms"
+    def __repr__(self) -> str:
+        return f"<Classroom {self.classroom_name!r}>"
 
 
 class Seating(TimestampColumn, IsActiveColumn, AuditColumn, Base):
+    __tablename__ = "seatings"
+
     id = Column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid4)
-    seating_arrangement = Column(JSON, nullable=False, default={})
+    seating_arrangement = Column(JSON, nullable=False, default=dict)
     exam_name = Column(String(255), nullable=False)
     exam_time = Column(DateTime, nullable=False)
-    __tablename__ = "seatings"
+
+    def __repr__(self) -> str:
+        return f"<Seating {self.exam_name!r} id={self.id}>"
