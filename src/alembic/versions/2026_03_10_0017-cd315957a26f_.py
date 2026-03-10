@@ -27,22 +27,46 @@ def upgrade() -> None:
         sa.Column("seating_arrangement", sa.JSON(), nullable=False),
         sa.Column("exam_name", sa.String(length=255), nullable=False),
         sa.Column("exam_time", sa.DateTime(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("is_active", sa.Boolean(), server_default=sa.text("true"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "is_active", sa.Boolean(), server_default=sa.text("true"), nullable=False
+        ),
         sa.Column("created_by", sa.UUID(), nullable=False),
         sa.Column("updated_by", sa.UUID(), nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_seatings")),
         schema="public",
     )
     op.create_index(
-        op.f("ix_seatings_public_seatings_created_at"), "seatings", ["created_at"], unique=False, schema="public"
+        op.f("ix_seatings_public_seatings_created_at"),
+        "seatings",
+        ["created_at"],
+        unique=False,
+        schema="public",
     )
     op.create_index(
-        op.f("ix_seatings_public_seatings_is_active"), "seatings", ["is_active"], unique=False, schema="public"
+        op.f("ix_seatings_public_seatings_is_active"),
+        "seatings",
+        ["is_active"],
+        unique=False,
+        schema="public",
     )
     op.create_index(
-        op.f("ix_seatings_public_seatings_updated_by"), "seatings", ["updated_by"], unique=False, schema="public"
+        op.f("ix_seatings_public_seatings_updated_by"),
+        "seatings",
+        ["updated_by"],
+        unique=False,
+        schema="public",
     )
     # op.drop_table("alembic_version")
     # ### end Alembic commands ###
@@ -56,8 +80,20 @@ def downgrade() -> None:
     #     sa.Column("version_num", sa.VARCHAR(length=32), autoincrement=False, nullable=False),
     #     sa.PrimaryKeyConstraint("version_num", name=op.f("alembic_version_pkc")),
     # )
-    op.drop_index(op.f("ix_seatings_public_seatings_updated_by"), table_name="seatings", schema="public")
-    op.drop_index(op.f("ix_seatings_public_seatings_is_active"), table_name="seatings", schema="public")
-    op.drop_index(op.f("ix_seatings_public_seatings_created_at"), table_name="seatings", schema="public")
+    op.drop_index(
+        op.f("ix_seatings_public_seatings_updated_by"),
+        table_name="seatings",
+        schema="public",
+    )
+    op.drop_index(
+        op.f("ix_seatings_public_seatings_is_active"),
+        table_name="seatings",
+        schema="public",
+    )
+    op.drop_index(
+        op.f("ix_seatings_public_seatings_created_at"),
+        table_name="seatings",
+        schema="public",
+    )
     op.drop_table("seatings", schema="public")
     # ### end Alembic commands ###

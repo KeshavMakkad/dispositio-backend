@@ -6,7 +6,12 @@ import json
 
 from core.exceptions import InternalServerErrorException
 from services.seating import create_seating_service
-from schemas.seating import CreateSeatingRequest, create_seating_form
+from schemas.seating import (
+    CreateSeatingRequest,
+    SeatingListResponse,
+    GetCapacityReqeust,
+    create_seating_form,
+)
 from utils.csv_utils import read_students_from_csv
 
 from db.models import Seating
@@ -26,6 +31,7 @@ def _read_students_from_csv(file_path: Path) -> list[str]:
                 students.append(email)
     return students
 
+
 @router.post("/create")
 async def create_seating(
     request: Request,
@@ -33,7 +39,7 @@ async def create_seating(
     student_list_two: UploadFile | None = File(None),
     args: CreateSeatingRequest = Depends(create_seating_form),
 ):
-    
+
     # Parse CSV
     content_one = await student_list_one.read()
     args.student_list_one = read_students_from_csv(content_one)
@@ -43,6 +49,20 @@ async def create_seating(
         args.student_list_two = read_students_from_csv(content_two)
 
     return create_seating_service(request, args)
+
+
+@router.get("/list")
+def list_seating_arrangements(request: Request):
+    with get_db_session(read_only=True) as session:
+        seatings = session.query(Seating).all()
+        return [
+            SeatingListResponse(
+                seating_id=seating.id,
+                exam_name=seating.exam_name,
+                exam_time=seating.exam_time,
+            )
+            for seating in seatings
+        ]
 
 
 @router.get("/{seating_id}")
@@ -57,3 +77,10 @@ def get_seating(request: Request, seating_id: str):
         if not seating:
             raise InternalServerErrorException("Seating arrangement not found.")
         return seating.seating_arrangement
+
+
+@router.get("/capacity")
+def get_capacity(request: Request, args: GetCapacityRequest):
+    """
+    Get the total capacity of all classrooms.
+    """

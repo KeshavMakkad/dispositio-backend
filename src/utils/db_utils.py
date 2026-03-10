@@ -14,22 +14,22 @@ from db.authorized_session import get_authorized_session
 def get_db_session(read_only: bool = False) -> Generator[Session, None, None]:
     """
     Get a database session with automatic commit/rollback.
-    
+
     This function routes to the appropriate session type:
     - read_only=True: Returns a read-only session
     - read_only=False: Returns an authorized session with write permissions
-    
+
     Args:
         read_only: If True, returns a read-only session. If False, returns authorized session.
-    
+
     Yields:
         Session: SQLAlchemy database session
-        
+
     Example:
         # For reading data
         with get_db_session(read_only=True) as session:
             users = session.query(User).all()
-        
+
         # For writing data
         with get_db_session(read_only=False) as session:
             new_user = User(name="John")
@@ -39,7 +39,7 @@ def get_db_session(read_only: bool = False) -> Generator[Session, None, None]:
         session = get_session()
     else:
         session = get_authorized_session()
-    
+
     try:
         yield session
         if read_only:
@@ -56,10 +56,10 @@ def get_db_session(read_only: bool = False) -> Generator[Session, None, None]:
 def get_db_health(engine: Engine) -> bool | None:
     """
     Check database health.
-    
+
     Args:
         engine: SQLAlchemy engine to check
-        
+
     Returns:
         bool | None: True if healthy, False if unhealthy, None if error
     """
@@ -73,10 +73,10 @@ def get_db_health(engine: Engine) -> bool | None:
 def get_db_status(engine: Engine) -> str:
     """
     Get database pool status.
-    
+
     Args:
         engine: SQLAlchemy engine to check
-        
+
     Returns:
         str: Pool status string
     """

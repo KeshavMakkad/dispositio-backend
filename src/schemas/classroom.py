@@ -7,6 +7,10 @@ class ClassLayoutItem(CamelCaseModel):
     column_set: str
 
 
+class ClassroomList(CamelCaseModel):
+    classroom_name: str
+
+
 class AddClassRoomRequest(CamelCaseModel):
     name: str
     class_layout: list[ClassLayoutItem]

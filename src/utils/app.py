@@ -8,7 +8,7 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],          # TEMP: allow all (tighten later)
+        allow_origins=["*"],  # TEMP: allow all (tighten later)
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -18,6 +18,7 @@ def create_app() -> FastAPI:
     app.include_router(router)
 
     return app
+
 
 router: APIRouter = APIRouter()
 router.include_router(api_router, prefix="/api")

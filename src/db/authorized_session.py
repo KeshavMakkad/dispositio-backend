@@ -20,14 +20,14 @@ SQLALCHEMY_SESSION_OPTIONS = {
 def get_authorized_session() -> Session:
     """
     Get an authorized database session for write operations.
-    
+
     Returns:
         Session: SQLAlchemy database session with write permissions
     """
     # For now, using the same engine
     # You can add authorization logic here later
     session_engine = engine
-    
+
     session = scoped_session(
         sessionmaker(bind=session_engine, **SQLALCHEMY_SESSION_OPTIONS),
         scopefunc=lambda: context.get(),

@@ -7,11 +7,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 BACKEND_DIR = Path(__file__).parent.parent.parent
 ENV_FILE = BACKEND_DIR / ".env"
 
+
 class Environment(StrEnum):
     dev = auto()
     stg = auto()
     prod = auto()
-    
+
+
 class LogLevel(StrEnum):
     debug = auto()
     info = auto()
@@ -19,12 +21,13 @@ class LogLevel(StrEnum):
     error = auto()
     critical = auto()
 
+
 class GlobalConfig(BaseSettings):
     ENVIRONMENT: Environment = Field(default=Environment.dev)
-    
+
     LOG_LEVEL: LogLevel = Field(default=LogLevel.debug)
     RELOAD: bool = Field(default=True)
-    
+
     HOST: str = Field(default="0.0.0.0")
     PORT: int = Field(default=3000)
 
@@ -35,14 +38,12 @@ class GlobalConfig(BaseSettings):
     DB_SCHEMA: str
     DB_PASSWORD: str = Field(default="")
 
-
     CREARE_MODELS: bool
-    
-    model_config = SettingsConfigDict (
-        env_file=str(ENV_FILE),
-        env_ignore_empty=True,
-        extra="ignore"
+
+    model_config = SettingsConfigDict(
+        env_file=str(ENV_FILE), env_ignore_empty=True, extra="ignore"
     )
+
 
 settings: GlobalConfig = GlobalConfig()
 

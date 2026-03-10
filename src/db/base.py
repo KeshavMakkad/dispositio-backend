@@ -13,38 +13,38 @@ ModelType = TypeVar("ModelType", bound=Base)
 class BaseRepository(Generic[ModelType]):
     """
     Base repository class providing common CRUD operations.
-    
+
     Usage:
         class UserRepository(BaseRepository[User]):
             pass
-        
+
         user_repo = UserRepository(User, db_session)
         user = user_repo.get(user_id)
     """
-    
+
     def __init__(self, model: Type[ModelType], db: Session):
         """
         Initialize repository with model and database session.
-        
+
         Args:
             model: SQLAlchemy model class
             db: Database session
         """
         self.model = model
         self.db = db
-    
+
     def get(self, id: Any) -> Optional[ModelType]:
         """
         Get a single record by ID.
-        
+
         Args:
             id: Primary key value
-            
+
         Returns:
             Model instance or None if not found
         """
         return self.db.get(self.model, id)
-    
+
     def get_all(
         self,
         skip: int = 0,
@@ -52,24 +52,24 @@ class BaseRepository(Generic[ModelType]):
     ) -> List[ModelType]:
         """
         Get all records with pagination.
-        
+
         Args:
             skip: Number of records to skip
             limit: Maximum number of records to return
-            
+
         Returns:
             List of model instances
         """
         stmt = select(self.model).offset(skip).limit(limit)
         return list(self.db.scalars(stmt).all())
-    
+
     def create(self, obj: ModelType) -> ModelType:
         """
         Create a new record.
-        
+
         Args:
             obj: Model instance to create
-            
+
         Returns:
             Created model instance
         """
@@ -77,15 +77,15 @@ class BaseRepository(Generic[ModelType]):
         self.db.flush()
         self.db.refresh(obj)
         return obj
-    
+
     def update(self, id: Any, **kwargs) -> Optional[ModelType]:
         """
         Update a record by ID.
-        
+
         Args:
             id: Primary key value
             **kwargs: Fields to update
-            
+
         Returns:
             Updated model instance or None if not found
         """
@@ -98,14 +98,14 @@ class BaseRepository(Generic[ModelType]):
         result = self.db.execute(stmt)
         self.db.flush()
         return result.scalar_one_or_none()
-    
+
     def delete(self, id: Any) -> bool:
         """
         Delete a record by ID.
-        
+
         Args:
             id: Primary key value
-            
+
         Returns:
             True if deleted, False if not found
         """
@@ -115,14 +115,14 @@ class BaseRepository(Generic[ModelType]):
             self.db.flush()
             return True
         return False
-    
+
     def filter(self, **kwargs) -> List[ModelType]:
         """
         Filter records by field values.
-        
+
         Args:
             **kwargs: Field name and value pairs
-            
+
         Returns:
             List of matching model instances
         """
@@ -131,11 +131,11 @@ class BaseRepository(Generic[ModelType]):
             if hasattr(self.model, key):
                 stmt = stmt.where(getattr(self.model, key) == value)
         return list(self.db.scalars(stmt).all())
-    
+
     def count(self) -> int:
         """
         Count total records.
-        
+
         Returns:
             Total number of records
         """
