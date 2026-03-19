@@ -1,10 +1,10 @@
 from uuid import uuid4
 
-from sqlalchemy import UUID, Column, DateTime, Enum, Integer, JSON, String
+from sqlalchemy import UUID, Column, DateTime, Integer, JSON, String
 
 from core.db_core import Base
 from utils.models import AuditColumn, IsActiveColumn, TimestampColumn
-from db.enum import RoleEnum
+from db.enum import RoleEnum, role_enum_type
 
 
 class Classroom(TimestampColumn, IsActiveColumn, AuditColumn, Base):
@@ -40,7 +40,7 @@ class User(TimestampColumn, IsActiveColumn, AuditColumn, Base):
     id = Column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid4)
     name = Column(String(255), nullable=False, unique=True)
     email = Column(String(255), nullable=False, unique=True)
-    role = Column(Enum(RoleEnum, name="role_enum"), nullable=False, default=RoleEnum.VIEWER)
+    role = Column(role_enum_type(), nullable=False, default=RoleEnum.VIEWER)
 
     def __repr__(self) -> str:
         return f"<User {self.name!r} id={self.id}>"

@@ -8,13 +8,18 @@ from schemas.seating import (
     CreateSeatingRequest,
     GetCapacityRequest,
     SeatingListResponse,
+    UpdateSeatingInfoRequest,
+    UpdateSeatingPlanRequest,
     create_seating_form,
 )
 from services.seating import (
     create_seating_service,
+    deactivate_seating,
     get_seating_by_id,
     get_seating_capacity,
     list_seatings,
+    update_seating_info,
+    update_seating_plan,
 )
 from utils.auth_dep import require_roles
 from utils.csv_utils import read_students_from_csv
@@ -66,3 +71,29 @@ def get_seating(
     ),
 ) -> dict:
     return get_seating_by_id(seating_id)
+
+
+@router.put("/{seating_id}/info")
+def update_seating_info_api(
+    seating_id: UUID,
+    args: UpdateSeatingInfoRequest,
+    current_user: User = Depends(require_roles(RoleEnum.ADMIN, RoleEnum.SUPER_ADMIN)),
+) -> dict:
+    return update_seating_info(seating_id=seating_id, args=args, actor_id=current_user.id)
+
+
+@router.put("/{seating_id}/plan")
+def update_seating_plan_api(
+    seating_id: UUID,
+    args: UpdateSeatingPlanRequest,
+    current_user: User = Depends(require_roles(RoleEnum.ADMIN, RoleEnum.SUPER_ADMIN)),
+) -> dict:
+    return update_seating_plan(seating_id=seating_id, args=args, actor_id=current_user.id)
+
+
+@router.delete("/{seating_id}")
+def delete_seating_api(
+    seating_id: UUID,
+    current_user: User = Depends(require_roles(RoleEnum.ADMIN, RoleEnum.SUPER_ADMIN)),
+) -> dict:
+    return deactivate_seating(seating_id=seating_id, actor_id=current_user.id)

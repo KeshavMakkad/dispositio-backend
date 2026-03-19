@@ -15,6 +15,12 @@ class UpdateUserRoleRequest(CamelCaseModel):
     role: RoleEnum
 
 
+class UpdateUserRequest(CamelCaseModel):
+    name: str
+    email: str
+    role: RoleEnum
+
+
 class UserResponse(CamelCaseModel):
     id: UUID
     name: str

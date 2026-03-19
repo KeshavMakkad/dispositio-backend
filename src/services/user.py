@@ -4,7 +4,12 @@ from core.exceptions import BadRequestException, NotFoundException
 from db.enum import RoleEnum
 from db.models import User
 from repositories.user import UserRepository
-from schemas.user import CreateUserRequest, UpdateUserRoleRequest, UserResponse
+from schemas.user import (
+    CreateUserRequest,
+    UpdateUserRequest,
+    UpdateUserRoleRequest,
+    UserResponse,
+)
 from utils.db_utils import get_db_session
 
 
@@ -86,3 +91,36 @@ def deactivate_user(user_id: UUID, actor_id: UUID) -> UserResponse:
         raise NotFoundException("User not found")
 
     return _to_user_response(updated)
+
+
+def update_user(user_id: UUID, args: UpdateUserRequest, actor_id: UUID) -> UserResponse:
+    with get_db_session(read_only=False) as session:
+        repo = UserRepository(session)
+        user = repo.get(user_id)
+        if not user:
+            raise NotFoundException("User not found")
+
+        duplicate_email = repo.get_by_email(args.email)
+        if duplicate_email and duplicate_email.id != user_id:
+            raise BadRequestException("User with this email already exists")
+
+        duplicate_name = repo.filter(name=args.name)
+        if any(u.id != user_id for u in duplicate_name):
+            raise BadRequestException("User with this name already exists")
+
+        updated = repo.update(
+            user_id,
+            name=args.name,
+            email=args.email,
+            role=args.role,
+            updated_by=actor_id,
+        )
+
+    if not updated:
+        raise NotFoundException("User not found")
+
+    return _to_user_response(updated)
+
+
+def delete_user(user_id: UUID, actor_id: UUID) -> UserResponse:
+    return deactivate_user(user_id=user_id, actor_id=actor_id)

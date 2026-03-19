@@ -30,6 +30,15 @@ class SeatingListResponse(CamelCaseModel):
     exam_time: datetime
 
 
+class UpdateSeatingInfoRequest(CamelCaseModel):
+    exam_name: str
+    exam_time: datetime
+
+
+class UpdateSeatingPlanRequest(CamelCaseModel):
+    seating_plan: dict
+
+
 class GetCapacityRequest(CamelCaseModel):
     classrooms_list: list[str]
 

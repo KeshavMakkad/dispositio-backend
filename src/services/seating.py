@@ -13,6 +13,8 @@ from schemas.seating import (
     CreateSeatingRequest,
     GetCapacityRequest,
     SeatingListResponse,
+    UpdateSeatingInfoRequest,
+    UpdateSeatingPlanRequest,
 )
 from services.classroom import get_default_class_details
 from utils.db_utils import get_db_session
@@ -226,6 +228,65 @@ def get_seating_by_id(seating_id: UUID) -> dict:
         if not seating:
             raise NotFoundException("Seating arrangement not found.")
         return seating.seating_arrangement
+
+
+def update_seating_info(
+    seating_id: UUID,
+    args: UpdateSeatingInfoRequest,
+    actor_id: UUID = SYSTEM_USER_ID,
+) -> dict:
+    with get_db_session(read_only=False) as session:
+        repo = SeatingRepository(session)
+        seating = repo.get_by_id(seating_id)
+        if not seating:
+            raise NotFoundException("Seating arrangement not found.")
+
+        updated = repo.update(
+            seating_id,
+            exam_name=args.exam_name,
+            exam_time=args.exam_time,
+            updated_by=actor_id,
+        )
+
+    if not updated:
+        raise NotFoundException("Seating arrangement not found.")
+
+    return {"message": "Seating info updated successfully."}
+
+
+def update_seating_plan(
+    seating_id: UUID,
+    args: UpdateSeatingPlanRequest,
+    actor_id: UUID = SYSTEM_USER_ID,
+) -> dict:
+    with get_db_session(read_only=False) as session:
+        repo = SeatingRepository(session)
+        seating = repo.get_by_id(seating_id)
+        if not seating:
+            raise NotFoundException("Seating arrangement not found.")
+
+        updated = repo.update(
+            seating_id,
+            seating_arrangement=args.seating_plan,
+            updated_by=actor_id,
+        )
+
+    if not updated:
+        raise NotFoundException("Seating arrangement not found.")
+
+    return {"message": "Seating plan updated successfully."}
+
+
+def deactivate_seating(seating_id: UUID, actor_id: UUID = SYSTEM_USER_ID) -> dict:
+    with get_db_session(read_only=False) as session:
+        repo = SeatingRepository(session)
+        seating = repo.get_by_id(seating_id)
+        if not seating:
+            raise NotFoundException("Seating arrangement not found.")
+
+        repo.update(seating_id, is_active=False, updated_by=actor_id)
+
+    return {"message": "Seating deleted successfully."}
 
 
 def list_seatings() -> list[SeatingListResponse]:

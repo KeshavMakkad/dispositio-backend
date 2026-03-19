@@ -19,3 +19,13 @@ class AddClassRoomRequest(CamelCaseModel):
     total_capacity: int
     set_one_capacity: int
     set_two_capacity: int
+
+
+class UpdateClassRoomRequest(CamelCaseModel):
+    name: str
+    class_layout: list[ClassLayoutItem]
+    columns_count: int
+    max_rows: int
+    total_capacity: int
+    set_one_capacity: int
+    set_two_capacity: int

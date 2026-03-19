@@ -1,10 +1,10 @@
 from uuid import UUID
 
 from core.constants import SYSTEM_USER_ID
-from core.exceptions import BadRequestException
+from core.exceptions import BadRequestException, NotFoundException
 from db.models import Classroom
 from repositories.classroom import ClassroomRepository
-from schemas.classroom import AddClassRoomRequest, ClassroomList
+from schemas.classroom import AddClassRoomRequest, ClassroomList, UpdateClassRoomRequest
 from schemas.seating import ClassroomLayouts
 from utils.db_utils import get_db_session
 
@@ -50,11 +50,57 @@ def create_classroom(args: AddClassRoomRequest, actor_id: UUID = SYSTEM_USER_ID)
     return {"message": "Classroom created successfully."}
 
 
+def update_classroom(
+    classroom_id: UUID,
+    args: UpdateClassRoomRequest,
+    actor_id: UUID = SYSTEM_USER_ID,
+) -> dict:
+    with get_db_session(read_only=False) as session:
+        repo = ClassroomRepository(session)
+        classroom = repo.get_by_id(classroom_id)
+        if not classroom:
+            raise NotFoundException("Classroom not found")
+
+        duplicate = repo.get_by_name(args.name)
+        if duplicate and duplicate.id != classroom_id:
+            raise BadRequestException("Classroom with this name already exists.")
+
+        class_layout_data = [item.model_dump() for item in args.class_layout]
+        updated = repo.update(
+            classroom_id,
+            classroom_name=args.name,
+            class_layout=class_layout_data,
+            columns_count=args.columns_count,
+            max_rows=args.max_rows,
+            total_capacity=args.total_capacity,
+            set_one_capacity=args.set_one_capacity,
+            set_two_capacity=args.set_two_capacity,
+            updated_by=actor_id,
+        )
+
+    if not updated:
+        raise NotFoundException("Classroom not found")
+
+    return {"message": "Classroom updated successfully."}
+
+
+def deactivate_classroom(classroom_id: UUID, actor_id: UUID = SYSTEM_USER_ID) -> dict:
+    with get_db_session(read_only=False) as session:
+        repo = ClassroomRepository(session)
+        classroom = repo.get_by_id(classroom_id)
+        if not classroom:
+            raise NotFoundException("Classroom not found")
+
+        repo.update(classroom_id, is_active=False, updated_by=actor_id)
+
+    return {"message": "Classroom deleted successfully."}
+
+
 def list_classrooms() -> list[ClassroomList]:
     """Return the name of every classroom."""
     with get_db_session(read_only=True) as session:
         repo = ClassroomRepository(session)
-        classrooms = repo.get_all()
+        classrooms = repo.list_active()
         return [
             ClassroomList(classroom_name=c.classroom_name) for c in classrooms
         ]
