@@ -1,38 +1,61 @@
+from datetime import datetime, timedelta, timezone
+from uuid import UUID
+
 import jwt
-from datetime import datetime, timedelta
+from jwt import InvalidTokenError
 
 from core.config import settings
+from core.exceptions import UnauthorizedException
+from db.enum import RoleEnum
 
-JWT_SECRET = settings.SUPABASE_JWT_SECRET
+JWT_SECRET = settings.JWT_SECRET
 ALGORITHM = "HS256"
 
-ACCESS_EXPIRE_MINUTES = 15
-REFRESH_EXPIRE_DAYS = 7
+ACCESS_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+REFRESH_EXPIRE_DAYS = settings.REFRESH_TOKEN_EXPIRE_DAYS
 
 
-def create_access_token(admin_id: str):
-    payload = {
-        "sub": admin_id,
-        "type": "access",
-        "exp": datetime.utcnow() + timedelta(minutes=ACCESS_EXPIRE_MINUTES),
+def _encode_token(payload: dict, expires_delta: timedelta) -> str:
+    now = datetime.now(timezone.utc)
+    token_payload = {
+        **payload,
+        "iat": now,
+        "exp": now + expires_delta,
     }
-
-    return jwt.encode(payload, JWT_SECRET, algorithm=ALGORITHM)
-
-
-def create_refresh_token(admin_id: str):
-    payload = {
-        "sub": admin_id,
-        "type": "refresh",
-        "exp": datetime.utcnow() + timedelta(days=REFRESH_EXPIRE_DAYS),
-    }
-
-    return jwt.encode(payload, JWT_SECRET, algorithm=ALGORITHM)
+    return jwt.encode(token_payload, JWT_SECRET, algorithm=ALGORITHM)
 
 
-def verify_token(token: str):
-    print('*' * 100)
-    print(token)
-    print('*' *100)
-    token = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM])
-    return token
+def create_access_token(user_id: UUID, email: str, role: RoleEnum) -> str:
+    return _encode_token(
+        payload={
+            "sub": str(user_id),
+            "email": email,
+            "role": role.value,
+            "type": "access",
+        },
+        expires_delta=timedelta(minutes=ACCESS_EXPIRE_MINUTES),
+    )
+
+
+def create_refresh_token(user_id: UUID, email: str, role: RoleEnum) -> str:
+    return _encode_token(
+        payload={
+            "sub": str(user_id),
+            "email": email,
+            "role": role.value,
+            "type": "refresh",
+        },
+        expires_delta=timedelta(days=REFRESH_EXPIRE_DAYS),
+    )
+
+
+def verify_token(token: str, expected_type: str | None = None) -> dict:
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM])
+    except InvalidTokenError as exc:
+        raise UnauthorizedException("Invalid or expired token") from exc
+
+    if expected_type and payload.get("type") != expected_type:
+        raise UnauthorizedException("Invalid token type")
+
+    return payload

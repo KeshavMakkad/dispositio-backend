@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from core.constants import SYSTEM_USER_ID
 from core.exceptions import BadRequestException
 from db.models import Classroom
@@ -23,7 +25,7 @@ def get_default_class_details(class_name: str) -> ClassroomLayouts:
         )
 
 
-def create_classroom(args: AddClassRoomRequest) -> dict:
+def create_classroom(args: AddClassRoomRequest, actor_id: UUID = SYSTEM_USER_ID) -> dict:
     """Persist a new classroom, rejecting duplicates."""
     with get_db_session(read_only=False) as session:
         repo = ClassroomRepository(session)
@@ -40,8 +42,8 @@ def create_classroom(args: AddClassRoomRequest) -> dict:
                 total_capacity=args.total_capacity,
                 set_one_capacity=args.set_one_capacity,
                 set_two_capacity=args.set_two_capacity,
-                created_by=SYSTEM_USER_ID,
-                updated_by=SYSTEM_USER_ID,
+                created_by=actor_id,
+                updated_by=actor_id,
             )
         )
 

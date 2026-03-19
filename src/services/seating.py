@@ -190,7 +190,7 @@ def _generate_seating(
 # ---------------------------------------------------------------------------
 
 
-def create_seating_service(args: CreateSeatingRequest) -> dict:
+def create_seating_service(args: CreateSeatingRequest, actor_id: UUID = SYSTEM_USER_ID) -> dict:
     """Orchestrate the full seating-plan creation pipeline."""
     class_layouts = _prepare_class_layouts(args)
     _validate_capacity(args, class_layouts)
@@ -207,8 +207,8 @@ def create_seating_service(args: CreateSeatingRequest) -> dict:
                 seating_arrangement=seating_plan,
                 exam_name=args.exam_name,
                 exam_time=args.exam_time,
-                created_by=SYSTEM_USER_ID,
-                updated_by=SYSTEM_USER_ID,
+                created_by=actor_id,
+                updated_by=actor_id,
             )
         )
 
