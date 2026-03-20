@@ -38,7 +38,10 @@ class GlobalConfig(BaseSettings):
     DB_SCHEMA: str
     DB_PASSWORD: str = Field(default="")
 
-    CREARE_MODELS: bool
+    # Supports legacy CREARE_MODELS for backward compatibility.
+    CREATE_MODELS: bool = Field(
+        validation_alias=AliasChoices("CREATE_MODELS", "CREARE_MODELS")
+    )
 
     # Backend JWT settings. Supports legacy SUPABASE_JWT_SECRET env for compatibility.
     JWT_SECRET: str = Field(
