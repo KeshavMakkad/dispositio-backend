@@ -9,6 +9,9 @@ class ClassLayoutItem(CamelCaseModel):
 
 class ClassroomList(CamelCaseModel):
     classroom_name: str
+    set_1_capacity: int
+    set_2_capacity: int
+    total_capacity: int
 
 
 class AddClassRoomRequest(CamelCaseModel):

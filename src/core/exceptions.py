@@ -26,10 +26,16 @@ class ForbiddenException(HTTPException):
         super().__init__(status_code=403, detail=message)
 
 
+class TeapotException(HTTPException):
+    def __init__(self, message: str = "I am a teapot"):
+        super().__init__(status_code=418, detail=message)
+
+
 __all__ = [
     "BadRequestException",
     "ForbiddenException",
     "InternalServerErrorException",
     "NotFoundException",
+    "TeapotException",
     "UnauthorizedException",
 ]

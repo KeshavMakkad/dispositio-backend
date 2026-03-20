@@ -1,9 +1,12 @@
 import random
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from uuid import UUID
 
+from core.config import settings
 from core.constants import SYSTEM_USER_ID
-from core.exceptions import BadRequestException, NotFoundException
+from core.exceptions import BadRequestException, NotFoundException, TeapotException
+from db.enum import RoleEnum
 from db.models import Seating
 from repositories.classroom import ClassroomRepository
 from repositories.seating import SeatingRepository
@@ -13,6 +16,7 @@ from schemas.seating import (
     CreateSeatingRequest,
     GetCapacityRequest,
     SeatingListResponse,
+    StudentSeatingListResponse,
     UpdateSeatingInfoRequest,
     UpdateSeatingPlanRequest,
 )
@@ -220,13 +224,26 @@ def create_seating_service(args: CreateSeatingRequest, actor_id: UUID = SYSTEM_U
     }
 
 
-def get_seating_by_id(seating_id: UUID) -> dict:
+def get_seating_by_id(seating_id: UUID, user_role: RoleEnum | None = None) -> dict:
     """Fetch a single seating arrangement by its UUID."""
     with get_db_session(read_only=True) as session:
         repo = SeatingRepository(session)
         seating = repo.get_by_id(seating_id)
         if not seating:
             raise NotFoundException("Seating arrangement not found.")
+
+        if user_role not in {RoleEnum.ADMIN, RoleEnum.SUPER_ADMIN}:
+            release_time = seating.exam_time - timedelta(
+                minutes=settings.SEATING_VIEWER_ACCESS_TIME_DIFF_MINUTES
+            )
+            now = (
+                datetime.now(tz=seating.exam_time.tzinfo)
+                if seating.exam_time.tzinfo
+                else datetime.utcnow()
+            )
+            if now < release_time:
+                raise TeapotException("I am a teapot")
+
         return seating.seating_arrangement
 
 
@@ -302,6 +319,47 @@ def list_seatings() -> list[SeatingListResponse]:
             )
             for s in seatings
         ]
+
+
+def list_seatings_by_student_email(email: str) -> list[StudentSeatingListResponse]:
+    """Return seating summaries where the given student email appears."""
+    target_email = email.strip().lower()
+    if not target_email:
+        raise BadRequestException("Email is required")
+
+    matches: list[StudentSeatingListResponse] = []
+    with get_db_session(read_only=True) as session:
+        repo = SeatingRepository(session)
+        seatings = repo.get_all_active()
+
+        for seating in seatings:
+            arrangement = seating.seating_arrangement or {}
+            matched_classrooms: list[str] = []
+
+            for classroom_name, rows in arrangement.items():
+                classroom_has_student = False
+                for row in rows:
+                    for cell in row:
+                        if isinstance(cell, str) and cell.strip().lower() == target_email:
+                            classroom_has_student = True
+                            break
+                    if classroom_has_student:
+                        break
+
+                if classroom_has_student:
+                    matched_classrooms.append(classroom_name)
+
+            if matched_classrooms:
+                matches.append(
+                    StudentSeatingListResponse(
+                        seating_id=seating.id,
+                        exam_name=seating.exam_name,
+                        exam_time=seating.exam_time,
+                        classrooms=matched_classrooms,
+                    )
+                )
+
+    return matches
 
 
 def get_seating_capacity(args: GetCapacityRequest) -> dict:

@@ -46,6 +46,33 @@ def get_current_user(payload: dict = Depends(get_access_payload)) -> User:
         return user
 
 
+def get_optional_current_user(request: Request) -> User | None:
+    token = request.cookies.get("access_token")
+    if not token:
+        return None
+
+    try:
+        payload = verify_token(token, expected_type="access")
+    except UnauthorizedException:
+        return None
+
+    user_id = payload.get("sub")
+    if not user_id:
+        return None
+
+    try:
+        parsed_id = UUID(user_id)
+    except ValueError:
+        return None
+
+    with get_db_session(read_only=True) as session:
+        repo = UserRepository(session)
+        user = repo.get(parsed_id)
+        if not user or not user.is_active:
+            return None
+        return user
+
+
 def get_user_from_refresh_payload(payload: dict = Depends(get_refresh_payload)) -> User:
     user_id = payload.get("sub")
     if not user_id:

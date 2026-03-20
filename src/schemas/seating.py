@@ -30,6 +30,13 @@ class SeatingListResponse(CamelCaseModel):
     exam_time: datetime
 
 
+class StudentSeatingListResponse(CamelCaseModel):
+    seating_id: UUID
+    exam_name: str
+    exam_time: datetime
+    classrooms: list[str]
+
+
 class UpdateSeatingInfoRequest(CamelCaseModel):
     exam_name: str
     exam_time: datetime

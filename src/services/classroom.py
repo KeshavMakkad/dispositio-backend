@@ -102,5 +102,10 @@ def list_classrooms() -> list[ClassroomList]:
         repo = ClassroomRepository(session)
         classrooms = repo.list_active()
         return [
-            ClassroomList(classroom_name=c.classroom_name) for c in classrooms
+            ClassroomList(
+                classroom_name=c.classroom_name,
+                set_1_capacity=c.set_one_capacity,
+                set_2_capacity=c.set_two_capacity,
+                total_capacity=c.total_capacity
+            ) for c in classrooms
         ]

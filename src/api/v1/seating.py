@@ -8,6 +8,7 @@ from schemas.seating import (
     CreateSeatingRequest,
     GetCapacityRequest,
     SeatingListResponse,
+    StudentSeatingListResponse,
     UpdateSeatingInfoRequest,
     UpdateSeatingPlanRequest,
     create_seating_form,
@@ -17,11 +18,12 @@ from services.seating import (
     deactivate_seating,
     get_seating_by_id,
     get_seating_capacity,
+    list_seatings_by_student_email,
     list_seatings,
     update_seating_info,
     update_seating_plan,
 )
-from utils.auth_dep import require_roles
+from utils.auth_dep import get_optional_current_user, require_roles
 from utils.csv_utils import read_students_from_csv
 
 router: APIRouter = APIRouter()
@@ -53,6 +55,13 @@ def list_seating_arrangements(
     return list_seatings()
 
 
+@router.get("/list/{email}")
+def list_seating_arrangements_by_email(
+    email: str,
+) -> list[StudentSeatingListResponse]:
+    return list_seatings_by_student_email(email)
+
+
 @router.get("/capacity")
 def get_capacity(
     args: GetCapacityRequest = Depends(),
@@ -66,11 +75,12 @@ def get_capacity(
 @router.get("/{seating_id}")
 def get_seating(
     seating_id: UUID,
-    _current_user: User = Depends(
-        require_roles(RoleEnum.ADMIN, RoleEnum.SUPER_ADMIN, RoleEnum.VIEWER)
-    ),
+    current_user: User | None = Depends(get_optional_current_user),
 ) -> dict:
-    return get_seating_by_id(seating_id)
+    return get_seating_by_id(
+        seating_id,
+        user_role=current_user.role if current_user else None,
+    )
 
 
 @router.put("/{seating_id}/info")
