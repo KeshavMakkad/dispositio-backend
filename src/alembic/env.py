@@ -7,6 +7,7 @@ from core.db_core import engine, Base, DB_SCHEMA
 from alembic import context
 
 from db import models  # noqa: F401
+from db import enum  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

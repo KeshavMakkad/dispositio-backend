@@ -43,7 +43,8 @@ def get_db_session(read_only: bool = False) -> Generator[Session, None, None]:
     try:
         yield session
         if read_only:
-            session.rollback()
+            # session.rollback()
+            pass
         else:
             session.commit()
     except Exception:

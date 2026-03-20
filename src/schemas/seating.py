@@ -1,10 +1,11 @@
-from datetime import datetime
-
-from uuid import UUID
-from schemas.common import CamelCaseModel
-from schemas.classroom import ClassLayoutItem
-from fastapi import Form, Depends
 import json
+from datetime import datetime
+from uuid import UUID
+
+from fastapi import Form
+
+from schemas.classroom import ClassLayoutItem
+from schemas.common import CamelCaseModel
 
 
 class ClassroomLayouts(CamelCaseModel):
@@ -23,18 +24,29 @@ class CreateSeatingRequest(CamelCaseModel):
     exam_time: datetime
 
 
-class GetSeatingRequest(CamelCaseModel):
-    # seating_id: UUID
-    pass
-
-
 class SeatingListResponse(CamelCaseModel):
     seating_id: UUID
     exam_name: str
     exam_time: datetime
 
 
-class GetCapacityReqeust(CamelCaseModel):
+class StudentSeatingListResponse(CamelCaseModel):
+    seating_id: UUID
+    exam_name: str
+    exam_time: datetime
+    classrooms: list[str]
+
+
+class UpdateSeatingInfoRequest(CamelCaseModel):
+    exam_name: str
+    exam_time: datetime
+
+
+class UpdateSeatingPlanRequest(CamelCaseModel):
+    seating_plan: dict
+
+
+class GetCapacityRequest(CamelCaseModel):
     classrooms_list: list[str]
 
 
@@ -42,12 +54,11 @@ def create_seating_form(
     classroomList: str = Form(...),
     examName: str = Form(...),
     examTime: datetime = Form(...),
-):
+) -> CreateSeatingRequest:
     return CreateSeatingRequest(
         student_list_one=[],
         student_list_two=None,
         classrooms_list=json.loads(classroomList),
-        exam_details=None,
         exam_name=examName,
         exam_time=examTime,
     )

@@ -9,9 +9,22 @@ class ClassLayoutItem(CamelCaseModel):
 
 class ClassroomList(CamelCaseModel):
     classroom_name: str
+    set_1_capacity: int
+    set_2_capacity: int
+    total_capacity: int
 
 
 class AddClassRoomRequest(CamelCaseModel):
+    name: str
+    class_layout: list[ClassLayoutItem]
+    columns_count: int
+    max_rows: int
+    total_capacity: int
+    set_one_capacity: int
+    set_two_capacity: int
+
+
+class UpdateClassRoomRequest(CamelCaseModel):
     name: str
     class_layout: list[ClassLayoutItem]
     columns_count: int
