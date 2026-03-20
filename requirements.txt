@@ -30,7 +30,7 @@ PyJWT==2.10.1
 pyhumps==3.8.0
 PySocks==1.7.1
 python-dotenv==1.2.1
-python-multipart-0.0.22
+python-multipart==0.0.22
 requests==2.32.5
 requests-file==3.0.1
 SQLAlchemy==2.0.45
