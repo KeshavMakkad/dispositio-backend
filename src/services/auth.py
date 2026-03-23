@@ -11,6 +11,7 @@ from utils.db_utils import get_db_session
 from utils.jwt import (
     create_access_token,
     create_refresh_token,
+    get_email_from_supabase_token,
 )
 
 
@@ -64,10 +65,21 @@ def _to_auth_user(user: User) -> AuthUserResponse:
     )
 
 
-def login_user(email: str, response: Response) -> AuthResponse:
+def login_user(
+    response: Response,
+    supabase_token: str | None = None,
+    email: str | None = None,
+) -> AuthResponse:
+    if supabase_token:
+        resolved_email = get_email_from_supabase_token(supabase_token)
+    elif email:
+        resolved_email = email
+    else:
+        raise UnauthorizedException("Missing login credentials")
+
     with get_db_session(read_only=True) as session:
         repo = UserRepository(session)
-        user = repo.get_by_email(email=email)
+        user = repo.get_by_email(email=resolved_email)
 
     if not user or not user.is_active:
         raise UnauthorizedException("User does not exist or is inactive")

@@ -47,6 +47,7 @@ class GlobalConfig(BaseSettings):
     JWT_SECRET: str = Field(
         validation_alias=AliasChoices("JWT_SECRET", "SUPABASE_JWT_SECRET")
     )
+    SUPABASE_JWT_SECRET: str | None = Field(default=None)
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=15)
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7)
 

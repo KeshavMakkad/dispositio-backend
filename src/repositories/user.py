@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from db.base import BaseRepository
@@ -11,8 +12,9 @@ class UserRepository(BaseRepository[User]):
         super().__init__(User, db)
 
     def get_by_email(self, email: str) -> User | None:
-        users = self.filter(email=email)
-        return users[0] if users else None
+        normalized_email = email.strip().lower()
+        stmt = select(User).where(func.lower(User.email) == normalized_email)
+        return self.db.scalars(stmt).first()
 
     def list_users(self) -> list[User]:
         return self.get_all(skip=0, limit=1000)

@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Body, Depends, Header, Response
 
+from core.exceptions import UnauthorizedException
 from db.models import User
 from schemas.auth import AuthResponse, AuthUserResponse, LoginRequest, MessageResponse
 from services.auth import login_user, logout_user, refresh_user_session
@@ -9,8 +10,29 @@ router: APIRouter = APIRouter()
 
 
 @router.post("/login", response_model=AuthResponse)
-def login(args: LoginRequest, response: Response) -> AuthResponse:
-    return login_user(args.email, response)
+def login(
+    response: Response,
+    args: LoginRequest | None = Body(default=None),
+    authorization: str | None = Header(default=None),
+) -> AuthResponse:
+    bearer_token: str | None = None
+    if authorization:
+        scheme, _, token = authorization.partition(" ")
+        if scheme.lower() == "bearer" and token:
+            bearer_token = token
+
+    body_token = args.supabase_token if args else None
+    email = args.email if args else None
+    resolved_token = body_token or bearer_token
+
+    if not resolved_token and not email:
+        raise UnauthorizedException("Missing login credentials")
+
+    return login_user(
+        response=response,
+        supabase_token=resolved_token,
+        email=email,
+    )
 
 
 @router.post("/refresh", response_model=AuthResponse)
