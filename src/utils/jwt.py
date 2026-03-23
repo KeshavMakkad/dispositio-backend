@@ -46,7 +46,7 @@ def _decode_supabase_token_with_jwks(token: str) -> dict:
     try:
         signing_key = jwt.PyJWKClient(jwks_url).get_signing_key_from_jwt(token)
     except Exception as exc:  # PyJWT raises multiple concrete exceptions here.
-        raise InvalidTokenError("Unable to resolve JWKS signing key") from exc
+        raise InvalidTokenError(f"Unable to resolve JWKS signing key: {exc}") from exc
 
     return jwt.decode(
         token,
