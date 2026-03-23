@@ -58,6 +58,9 @@ class GlobalConfig(BaseSettings):
     # Viewer can access seating plan only after exam_time - this offset (minutes).
     SEATING_VIEWER_ACCESS_TIME_DIFF_MINUTES: int = Field(default=30)
 
+    # Shared secret for non-interactive Google Sheets integration.
+    SHEETS_API_KEY: str | None = Field(default=None)
+
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE), env_ignore_empty=True, extra="ignore"
     )

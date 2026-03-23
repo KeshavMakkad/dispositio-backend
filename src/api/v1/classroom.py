@@ -4,14 +4,21 @@ from fastapi import APIRouter, Depends
 
 from db.enum import RoleEnum
 from db.models import User
-from schemas.classroom import AddClassRoomRequest, ClassroomList, UpdateClassRoomRequest
+from schemas.classroom import (
+    AddClassRoomRequest,
+    ClassroomList,
+    SheetsUpsertClassroomsRequest,
+    SheetsUpsertClassroomsResponse,
+    UpdateClassRoomRequest,
+)
 from services.classroom import (
     create_classroom,
     deactivate_classroom,
     list_classrooms,
+    upsert_classrooms_from_sheets,
     update_classroom,
 )
-from utils.auth_dep import require_roles
+from utils.auth_dep import require_roles, require_sheets_api_key
 
 router: APIRouter = APIRouter()
 
@@ -48,3 +55,14 @@ def delete_classroom_api(
     current_user: User = Depends(require_roles(RoleEnum.ADMIN, RoleEnum.SUPER_ADMIN)),
 ) -> dict:
     return deactivate_classroom(classroom_id=classroom_id, actor_id=current_user.id)
+
+
+@router.post(
+    "/sheets/upsert",
+    response_model=SheetsUpsertClassroomsResponse,
+    dependencies=[Depends(require_sheets_api_key)],
+)
+def upsert_classrooms_from_google_sheets(
+    args: SheetsUpsertClassroomsRequest,
+) -> SheetsUpsertClassroomsResponse:
+    return upsert_classrooms_from_sheets(args.classrooms)

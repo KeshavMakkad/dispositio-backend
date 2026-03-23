@@ -32,3 +32,13 @@ class UpdateClassRoomRequest(CamelCaseModel):
     total_capacity: int
     set_one_capacity: int
     set_two_capacity: int
+
+
+class SheetsUpsertClassroomsRequest(CamelCaseModel):
+    classrooms: list[AddClassRoomRequest]
+
+
+class SheetsUpsertClassroomsResponse(CamelCaseModel):
+    message: str
+    created_count: int
+    updated_count: int

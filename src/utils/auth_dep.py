@@ -1,8 +1,10 @@
 from typing import Callable
 from uuid import UUID
+from secrets import compare_digest
 
-from fastapi import Depends, Request
+from fastapi import Depends, Header, Request
 
+from core.config import settings
 from core.exceptions import ForbiddenException, UnauthorizedException
 from db.enum import RoleEnum
 from db.models import User
@@ -98,3 +100,14 @@ def require_roles(*allowed_roles: RoleEnum) -> Callable[[User], User]:
         return user
 
     return _guard
+
+
+def require_sheets_api_key(
+    api_key: str | None = Header(default=None, alias="X-Sheets-Api-Key"),
+) -> None:
+    configured_api_key = settings.SHEETS_API_KEY
+    if not configured_api_key:
+        raise ForbiddenException("Sheets integration is not configured")
+
+    if not api_key or not compare_digest(api_key, configured_api_key):
+        raise UnauthorizedException("Invalid Sheets API key")

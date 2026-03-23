@@ -21,6 +21,18 @@ def create_app() -> FastAPI:
 
 
 router: APIRouter = APIRouter()
+
+
+@router.get("/")
+def root() -> dict[str, str]:
+    return {"message": "Dispositio backend is running"}
+
+
+@router.get("/healthz")
+def healthz() -> dict[str, str]:
+    return {"status": "ok"}
+
+
 router.include_router(api_router, prefix="/api")
 
 

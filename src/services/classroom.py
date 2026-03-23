@@ -4,7 +4,12 @@ from core.constants import SYSTEM_USER_ID
 from core.exceptions import BadRequestException, NotFoundException
 from db.models import Classroom
 from repositories.classroom import ClassroomRepository
-from schemas.classroom import AddClassRoomRequest, ClassroomList, UpdateClassRoomRequest
+from schemas.classroom import (
+    AddClassRoomRequest,
+    ClassroomList,
+    SheetsUpsertClassroomsResponse,
+    UpdateClassRoomRequest,
+)
 from schemas.seating import ClassroomLayouts
 from utils.db_utils import get_db_session
 
@@ -109,3 +114,53 @@ def list_classrooms() -> list[ClassroomList]:
                 total_capacity=c.total_capacity
             ) for c in classrooms
         ]
+
+
+def upsert_classrooms_from_sheets(
+    classrooms: list[AddClassRoomRequest], actor_id: UUID = SYSTEM_USER_ID
+) -> SheetsUpsertClassroomsResponse:
+    created_count = 0
+    updated_count = 0
+
+    with get_db_session(read_only=False) as session:
+        repo = ClassroomRepository(session)
+        for classroom in classrooms:
+            class_layout_data = [item.model_dump() for item in classroom.class_layout]
+            existing = repo.get_by_name(classroom.name, include_inactive=True)
+
+            if existing:
+                repo.update(
+                    existing.id,
+                    classroom_name=classroom.name,
+                    class_layout=class_layout_data,
+                    columns_count=classroom.columns_count,
+                    max_rows=classroom.max_rows,
+                    total_capacity=classroom.total_capacity,
+                    set_one_capacity=classroom.set_one_capacity,
+                    set_two_capacity=classroom.set_two_capacity,
+                    is_active=True,
+                    updated_by=actor_id,
+                )
+                updated_count += 1
+                continue
+
+            repo.create(
+                Classroom(
+                    classroom_name=classroom.name,
+                    class_layout=class_layout_data,
+                    columns_count=classroom.columns_count,
+                    max_rows=classroom.max_rows,
+                    total_capacity=classroom.total_capacity,
+                    set_one_capacity=classroom.set_one_capacity,
+                    set_two_capacity=classroom.set_two_capacity,
+                    created_by=actor_id,
+                    updated_by=actor_id,
+                )
+            )
+            created_count += 1
+
+    return SheetsUpsertClassroomsResponse(
+        message="Classrooms upserted successfully.",
+        created_count=created_count,
+        updated_count=updated_count,
+    )
