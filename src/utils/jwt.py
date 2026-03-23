@@ -1,10 +1,8 @@
 from datetime import datetime, timedelta, timezone
-import json
 from uuid import UUID
 
 import jwt
 import requests
-from jwt.algorithms import ECAlgorithm, RSAAlgorithm
 from jwt import InvalidTokenError
 
 from core.config import settings
@@ -42,24 +40,17 @@ def _decode_supabase_token_with_jwks(token: str) -> dict:
         base_url = issuer.rstrip("/")
 
     jwks_url = f"{base_url}/auth/v1/.well-known/jwks.json"
-    response = requests.get(jwks_url, timeout=8)
-    response.raise_for_status()
-    keys = response.json().get("keys", [])
-
-    matching_key = next((key for key in keys if key.get("kid") == kid), None)
-    if not matching_key:
-        raise InvalidTokenError("No matching JWKS key for Supabase token")
-
-    if algorithm.startswith("ES"):
-        public_key = ECAlgorithm.from_jwk(json.dumps(matching_key))
-    elif algorithm.startswith("RS"):
-        public_key = RSAAlgorithm.from_jwk(json.dumps(matching_key))
-    else:
+    if not (algorithm.startswith("ES") or algorithm.startswith("RS")):
         raise InvalidTokenError(f"Unsupported Supabase token algorithm: {algorithm}")
+
+    try:
+        signing_key = jwt.PyJWKClient(jwks_url).get_signing_key_from_jwt(token)
+    except Exception as exc:  # PyJWT raises multiple concrete exceptions here.
+        raise InvalidTokenError("Unable to resolve JWKS signing key") from exc
 
     return jwt.decode(
         token,
-        public_key,
+        signing_key.key,
         algorithms=[algorithm],
         options={"verify_aud": False},
     )
