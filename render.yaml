@@ -31,7 +31,7 @@ services:
         value: public
       - key: CREATE_MODELS
         value: "true"
-      - key: JWT_SECRET
+      - key: SUPABASE_JWT_SECRET
         sync: false
       - key: COOKIE_SECURE
         value: "true"
