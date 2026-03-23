@@ -103,6 +103,7 @@ def verify_token(token: str, expected_type: str | None = None) -> dict:
 
 
 def get_email_from_supabase_token(token: str) -> str:
+    hs256_error: str | None = None
     try:
         payload = jwt.decode(
             token,
@@ -111,11 +112,14 @@ def get_email_from_supabase_token(token: str) -> str:
             options={"verify_aud": False},
         )
     except InvalidTokenError as exc:
+        hs256_error = str(exc)
         try:
             payload = _decode_supabase_token_with_jwks(token)
-        except (InvalidTokenError, requests.RequestException):
+        except (InvalidTokenError, requests.RequestException) as jwks_exc:
+            jwks_error = str(jwks_exc)
             raise UnauthorizedException(
-                "Invalid or expired Supabase token. Verify Supabase project settings and token source."
+                "Invalid or expired Supabase token. "
+                f"HS256 failed: {hs256_error}. JWKS failed: {jwks_error}."
             ) from exc
 
     email = payload.get("email")
