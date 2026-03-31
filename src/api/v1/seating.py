@@ -25,22 +25,30 @@ from services.seating import (
 )
 from utils.auth_dep import get_optional_current_user, require_roles
 from utils.csv_utils import read_students_from_csv
+from core.exceptions import BadRequestException
 
 router: APIRouter = APIRouter()
 
 
 @router.post("/create")
 async def create_seating(
-    student_list_one: UploadFile = File(...),
+    student_list_one: UploadFile | None = File(None),
+    studentListOneFile: UploadFile | None = File(None),
     student_list_two: UploadFile | None = File(None),
+    studentListTwoFile: UploadFile | None = File(None),
     args: CreateSeatingRequest = Depends(create_seating_form),
     current_user: User = Depends(require_roles(RoleEnum.ADMIN, RoleEnum.SUPER_ADMIN)),
 ):
-    content_one = await student_list_one.read()
+    file_one = student_list_one or studentListOneFile
+    if not file_one:
+        raise BadRequestException("student_list_one file is required")
+
+    content_one = await file_one.read()
     args.student_list_one = read_students_from_csv(content_one)
 
-    if student_list_two:
-        content_two = await student_list_two.read()
+    file_two = student_list_two or studentListTwoFile
+    if file_two:
+        content_two = await file_two.read()
         args.student_list_two = read_students_from_csv(content_two)
 
     return create_seating_service(args, actor_id=current_user.id)

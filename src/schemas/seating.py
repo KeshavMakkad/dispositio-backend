@@ -51,14 +51,24 @@ class GetCapacityRequest(CamelCaseModel):
 
 
 def create_seating_form(
-    classroomList: str = Form(...),
+    classroomList: str | None = Form(None),
+    classroomsList: str | None = Form(None),
     examName: str = Form(...),
     examTime: datetime = Form(...),
 ) -> CreateSeatingRequest:
+    raw_classrooms = classroomList or classroomsList
+    if not raw_classrooms:
+        raise ValueError("classroomList is required")
+
+    try:
+        classrooms = json.loads(raw_classrooms)
+    except json.JSONDecodeError:
+        classrooms = [item.strip() for item in raw_classrooms.split(",") if item.strip()]
+
     return CreateSeatingRequest(
         student_list_one=[],
         student_list_two=None,
-        classrooms_list=json.loads(classroomList),
+        classrooms_list=classrooms,
         exam_name=examName,
         exam_time=examTime,
     )
