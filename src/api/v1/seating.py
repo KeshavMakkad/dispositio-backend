@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, UploadFile, File
@@ -28,6 +29,7 @@ from utils.csv_utils import read_students_from_csv
 from core.exceptions import BadRequestException
 
 router: APIRouter = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/create")
@@ -39,17 +41,49 @@ async def create_seating(
     args: CreateSeatingRequest = Depends(create_seating_form),
     current_user: User = Depends(require_roles(RoleEnum.ADMIN, RoleEnum.SUPER_ADMIN)),
 ):
+    logger.debug(
+        "create_seating request received: exam_name=%s exam_time=%s classrooms=%s file_fields_present={student_list_one:%s, studentListOneFile:%s, student_list_two:%s, studentListTwoFile:%s}",
+        args.exam_name,
+        args.exam_time,
+        args.classrooms_list,
+        bool(student_list_one),
+        bool(studentListOneFile),
+        bool(student_list_two),
+        bool(studentListTwoFile),
+    )
+
     file_one = student_list_one or studentListOneFile
     if not file_one:
+        logger.debug("create_seating failed: primary student file missing")
         raise BadRequestException("student_list_one file is required")
 
     content_one = await file_one.read()
     args.student_list_one = read_students_from_csv(content_one)
+    logger.debug(
+        "primary student file parsed: filename=%s bytes=%d parsed_students=%d",
+        file_one.filename,
+        len(content_one),
+        len(args.student_list_one),
+    )
 
     file_two = student_list_two or studentListTwoFile
     if file_two:
         content_two = await file_two.read()
         args.student_list_two = read_students_from_csv(content_two)
+        logger.debug(
+            "secondary student file parsed: filename=%s bytes=%d parsed_students=%d",
+            file_two.filename,
+            len(content_two),
+            len(args.student_list_two or []),
+        )
+    else:
+        logger.debug("secondary student file not provided")
+
+    logger.debug(
+        "create_seating proceeding: set_one_count=%d set_two_count=%d",
+        len(args.student_list_one),
+        len(args.student_list_two or []),
+    )
 
     return create_seating_service(args, actor_id=current_user.id)
 
