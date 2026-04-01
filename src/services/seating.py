@@ -167,13 +167,14 @@ def _generate_seating_for_classroom(
     for row_idx in range(max_rows):
         row: list[str] = []
         for col_idx, col in enumerate(columns):
+            normalized_set = _normalize_set_label(col.column_set)
             if col.column_name == "-":
                 row.append("-")
             elif row_idx >= capacities[col_idx]:
                 row.append("")
-            elif col.column_set == "Set 1" and layout.set_one_assigned_students:
+            elif normalized_set == "set_1" and layout.set_one_assigned_students:
                 row.append(layout.set_one_assigned_students.pop())
-            elif col.column_set == "Set 2" and layout.set_two_assigned_students:
+            elif normalized_set == "set_2" and layout.set_two_assigned_students:
                 row.append(layout.set_two_assigned_students.pop())
             else:
                 row.append("")
@@ -189,6 +190,18 @@ def _generate_seating(
         name: _generate_seating_for_classroom(layout)
         for name, layout in class_layouts.items()
     }
+
+
+def _normalize_set_label(raw: str | None) -> str:
+    if not raw:
+        return ""
+
+    label = raw.strip().lower().replace(" ", "").replace("-", "").replace("_", "")
+    if label in {"set1", "1", "a"}:
+        return "set_1"
+    if label in {"set2", "2", "b"}:
+        return "set_2"
+    return ""
 
 
 # ---------------------------------------------------------------------------
