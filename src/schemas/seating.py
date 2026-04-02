@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import datetime
 from uuid import UUID
 
@@ -6,6 +7,8 @@ from fastapi import Form
 
 from schemas.classroom import ClassLayoutItem
 from schemas.common import CamelCaseModel
+
+logger = logging.getLogger(__name__)
 
 
 class ClassroomLayouts(CamelCaseModel):
@@ -57,13 +60,24 @@ def create_seating_form(
     examTime: datetime = Form(...),
 ) -> CreateSeatingRequest:
     raw_classrooms = classroomList or classroomsList
+    logger.debug(
+        "create_seating_form received: classroomList_present=%s classroomsList_present=%s examName=%s examTime=%s",
+        classroomList is not None,
+        classroomsList is not None,
+        examName,
+        examTime,
+    )
+
     if not raw_classrooms:
+        logger.debug("create_seating_form failed: classroom list field missing")
         raise ValueError("classroomList is required")
 
     try:
         classrooms = json.loads(raw_classrooms)
     except json.JSONDecodeError:
         classrooms = [item.strip() for item in raw_classrooms.split(",") if item.strip()]
+
+    logger.debug("create_seating_form parsed classrooms_count=%d", len(classrooms))
 
     return CreateSeatingRequest(
         student_list_one=[],

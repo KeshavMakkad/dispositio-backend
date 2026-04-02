@@ -25,7 +25,10 @@ class LogLevel(StrEnum):
 class GlobalConfig(BaseSettings):
     ENVIRONMENT: Environment = Field(default=Environment.dev)
 
-    LOG_LEVEL: LogLevel = Field(default=LogLevel.debug)
+    LOG_LEVEL: LogLevel = Field(
+        default=LogLevel.debug,
+        validation_alias=AliasChoices("LOG_LEVEL", "LOGS"),
+    )
     RELOAD: bool = Field(default=True)
 
     HOST: str = Field(default="0.0.0.0")

@@ -6,7 +6,7 @@ from db.models import Classroom
 from repositories.classroom import ClassroomRepository
 from schemas.classroom import (
     AddClassRoomRequest,
-    ClassroomList,
+    ClassroomResponse,
     SheetsUpsertClassroomsResponse,
     UpdateClassRoomRequest,
 )
@@ -101,14 +101,18 @@ def deactivate_classroom(classroom_id: UUID, actor_id: UUID = SYSTEM_USER_ID) ->
     return {"message": "Classroom deleted successfully."}
 
 
-def list_classrooms() -> list[ClassroomList]:
-    """Return the name of every classroom."""
+def list_classrooms() -> list[ClassroomResponse]:
+    """Return every active classroom using a stable API schema."""
     with get_db_session(read_only=True) as session:
         repo = ClassroomRepository(session)
         classrooms = repo.list_active()
         return [
-            ClassroomList(
+            ClassroomResponse(
+                classroom_id=c.id,
                 classroom_name=c.classroom_name,
+                class_layout=c.class_layout,
+                columns_count=c.columns_count,
+                max_rows=c.max_rows,
                 set_1_capacity=c.set_one_capacity,
                 set_2_capacity=c.set_two_capacity,
                 total_capacity=c.total_capacity
