@@ -1,6 +1,6 @@
 import random
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import timedelta
 from uuid import UUID
 
 from core.config import settings
@@ -21,6 +21,7 @@ from schemas.seating import (
     UpdateSeatingPlanRequest,
 )
 from services.classroom import get_default_class_details
+from utils.datetime_utils import get_current_datetime, to_ist_aware, to_ist_naive
 from utils.db_utils import get_db_session
 
 
@@ -225,7 +226,7 @@ def create_seating_service(args: CreateSeatingRequest, actor_id: UUID = SYSTEM_U
             Seating(
                 seating_arrangement=seating_plan,
                 exam_name=args.exam_name,
-                exam_time=args.exam_time,
+                exam_time=to_ist_naive(args.exam_time),
                 created_by=actor_id,
                 updated_by=actor_id,
             )
@@ -249,11 +250,7 @@ def get_seating_by_id(seating_id: UUID, user_role: RoleEnum | None = None) -> di
             release_time = seating.exam_time - timedelta(
                 minutes=settings.SEATING_VIEWER_ACCESS_TIME_DIFF_MINUTES
             )
-            now = (
-                datetime.now(tz=seating.exam_time.tzinfo)
-                if seating.exam_time.tzinfo
-                else datetime.utcnow()
-            )
+            now = get_current_datetime()
             if now < release_time:
                 raise TeapotException("I am a teapot")
 
@@ -274,7 +271,7 @@ def update_seating_info(
         updated = repo.update(
             seating_id,
             exam_name=args.exam_name,
-            exam_time=args.exam_time,
+            exam_time=to_ist_naive(args.exam_time),
             updated_by=actor_id,
         )
 
@@ -328,7 +325,7 @@ def list_seatings() -> list[SeatingListResponse]:
             SeatingListResponse(
                 seating_id=s.id,
                 exam_name=s.exam_name,
-                exam_time=s.exam_time,
+                exam_time=to_ist_aware(s.exam_time),
             )
             for s in seatings
         ]
@@ -367,7 +364,7 @@ def list_seatings_by_student_email(email: str) -> list[StudentSeatingListRespons
                     StudentSeatingListResponse(
                         seating_id=seating.id,
                         exam_name=seating.exam_name,
-                        exam_time=seating.exam_time,
+                        exam_time=to_ist_aware(seating.exam_time),
                         classrooms=matched_classrooms,
                     )
                 )
