@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from schemas.common import CamelCaseModel
 
 
@@ -7,11 +9,15 @@ class ClassLayoutItem(CamelCaseModel):
     column_set: str
 
 
-class ClassroomList(CamelCaseModel):
+class ClassroomResponse(CamelCaseModel):
+    classroom_id: UUID
     classroom_name: str
+    class_layout: list[ClassLayoutItem]
+    columns_count: int
+    max_rows: int
+    total_capacity: int
     set_1_capacity: int
     set_2_capacity: int
-    total_capacity: int
 
 
 class AddClassRoomRequest(CamelCaseModel):

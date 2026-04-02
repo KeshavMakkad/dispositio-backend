@@ -6,7 +6,7 @@ from db.enum import RoleEnum
 from db.models import User
 from schemas.classroom import (
     AddClassRoomRequest,
-    ClassroomList,
+    ClassroomResponse,
     SheetsUpsertClassroomsRequest,
     SheetsUpsertClassroomsResponse,
     UpdateClassRoomRequest,
@@ -36,7 +36,7 @@ def get_classrooms(
     _current_user: User = Depends(
         require_roles(RoleEnum.ADMIN, RoleEnum.SUPER_ADMIN, RoleEnum.VIEWER)
     ),
-) -> list[ClassroomList]:
+) -> list[ClassroomResponse]:
     return list_classrooms()
 
 
