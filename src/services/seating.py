@@ -1,8 +1,8 @@
 import random
+from utils.app import logger
 from dataclasses import dataclass, field
 from datetime import timedelta
 from uuid import UUID
-
 from core.config import settings
 from core.constants import SYSTEM_USER_ID
 from core.exceptions import BadRequestException, NotFoundException, TeapotException
@@ -28,7 +28,6 @@ from utils.db_utils import get_db_session
 # ---------------------------------------------------------------------------
 # Internal data structures
 # ---------------------------------------------------------------------------
-
 
 @dataclass
 class ClassStudentAssignment:
@@ -67,6 +66,13 @@ def _prepare_class_layouts(
         source = custom_layouts.get(classroom) or get_default_class_details(classroom)
         class_layouts[classroom] = _to_assignment(source)
 
+    class_layouts = dict(
+        sorted(
+            class_layouts.items(),
+            key=lambda x: x[1].set_one_capacity + x[1].set_two_capacity,
+        )
+    )
+    logger.debug("Prepared class layouts: %s", class_layouts)
     return class_layouts
 
 
@@ -131,9 +137,15 @@ def _assign_students_to_classrooms(
             set_one_target = 0
             set_two_target = 0
 
+        # print("I AM FUCKING donw wiht this project, fucking idone with this")
+        
+        logger.debug("assigning students to classroom=%s: set_one_target=%d set_two_target=%d set_one_capacity=%d set_two_capacity=%d remaining_one=%d remaining_two=%d remaining_classes=%d",
+            layout.classroom_name, set_one_target, set_two_target, layout.set_one_capacity, layout.set_two_capacity, remaining_one, remaining_two, remaining_classes)
+
         layout.set_one_assigned_students = student_list_one[
             set_one_idx : set_one_idx + set_one_target
         ]
+        # logger.debug("assigned to set_one: %s", len(layout.set_one_assigned_students))
         layout.set_two_assigned_students = student_list_two[
             set_two_idx : set_two_idx + set_two_target
         ]
@@ -216,7 +228,9 @@ def create_seating_service(args: CreateSeatingRequest, actor_id: UUID = SYSTEM_U
     _validate_capacity(args, class_layouts)
 
     set_one, set_two = _shuffle_students(args)
+
     _assign_students_to_classrooms(class_layouts, set_one, set_two)
+    # raise RuntimeError("Force error. Fuck this shit")
 
     seating_plan = _generate_seating(class_layouts)
 

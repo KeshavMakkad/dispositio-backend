@@ -1,6 +1,8 @@
 import logging
 from logging.config import dictConfig
 
+logger = logging.getLogger(__name__)
+
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api import router as api_router
@@ -35,7 +37,7 @@ def configure_logging() -> None:
             },
         }
     )
-    logging.getLogger(__name__).warning(
+    logger.warning(
         "Logging configured with level=%s (env keys: LOG_LEVEL/LOGS)",
         settings.LOG_LEVEL.value,
     )
@@ -74,7 +76,6 @@ def healthz() -> dict[str, str]:
 
 router.include_router(api_router, prefix="/api")
 
-
 app: FastAPI = create_app()
 
-__all__ = ["app"]
+__all__ = ["app", "logger"]
