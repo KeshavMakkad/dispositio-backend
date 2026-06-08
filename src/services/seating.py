@@ -15,6 +15,7 @@ from schemas.seating import (
     ClassroomLayouts,
     CreateSeatingRequest,
     GetCapacityRequest,
+    PrintStatusResponse,
     SeatingListResponse,
     StudentSeatingListResponse,
     UpdateSeatingInfoRequest,
@@ -286,6 +287,9 @@ def update_seating_info(
             seating_id,
             exam_name=args.exam_name,
             exam_time=to_ist_naive(args.exam_time),
+            # Editing invalidates a previous print; printed_at is kept so the
+            # frontend can warn that the printed copy is now out of date.
+            is_printed=False,
             updated_by=actor_id,
         )
 
@@ -309,6 +313,8 @@ def update_seating_plan(
         updated = repo.update(
             seating_id,
             seating_arrangement=args.seating_plan,
+            # Editing the plan invalidates a previous print (see update_seating_info).
+            is_printed=False,
             updated_by=actor_id,
         )
 
@@ -330,6 +336,11 @@ def deactivate_seating(seating_id: UUID, actor_id: UUID = SYSTEM_USER_ID) -> dic
     return {"message": "Seating deleted successfully."}
 
 
+def _needs_reprint(seating: Seating) -> bool:
+    """True when a plan was printed but has since been edited (is_printed reset)."""
+    return seating.printed_at is not None and not seating.is_printed
+
+
 def list_seatings() -> list[SeatingListResponse]:
     """Return summary info for every seating arrangement."""
     with get_db_session(read_only=True) as session:
@@ -340,9 +351,54 @@ def list_seatings() -> list[SeatingListResponse]:
                 seating_id=s.id,
                 exam_name=s.exam_name,
                 exam_time=to_ist_aware(s.exam_time),
+                is_printed=s.is_printed,
+                printed_at=to_ist_aware(s.printed_at) if s.printed_at else None,
+                needs_reprint=_needs_reprint(s),
             )
             for s in seatings
         ]
+
+
+def mark_seating_printed(seating_id: UUID, actor_id: UUID = SYSTEM_USER_ID) -> PrintStatusResponse:
+    """Mark a seating plan as printed (called after the PDF is downloaded)."""
+    with get_db_session(read_only=False) as session:
+        repo = SeatingRepository(session)
+        seating = repo.get_by_id(seating_id)
+        if not seating:
+            raise NotFoundException("Seating arrangement not found.")
+
+        updated = repo.update(
+            seating_id,
+            is_printed=True,
+            printed_at=get_current_datetime(),
+            updated_by=actor_id,
+        )
+
+    if not updated:
+        raise NotFoundException("Seating arrangement not found.")
+
+    return PrintStatusResponse(
+        seating_id=updated.id,
+        is_printed=updated.is_printed,
+        printed_at=to_ist_aware(updated.printed_at) if updated.printed_at else None,
+        needs_reprint=_needs_reprint(updated),
+    )
+
+
+def get_seating_print_status(seating_id: UUID) -> PrintStatusResponse:
+    """Return the current print status for a single seating plan."""
+    with get_db_session(read_only=True) as session:
+        repo = SeatingRepository(session)
+        seating = repo.get_by_id(seating_id)
+        if not seating:
+            raise NotFoundException("Seating arrangement not found.")
+
+        return PrintStatusResponse(
+            seating_id=seating.id,
+            is_printed=seating.is_printed,
+            printed_at=to_ist_aware(seating.printed_at) if seating.printed_at else None,
+            needs_reprint=_needs_reprint(seating),
+        )
 
 
 def list_seatings_by_student_email(email: str) -> list[StudentSeatingListResponse]:

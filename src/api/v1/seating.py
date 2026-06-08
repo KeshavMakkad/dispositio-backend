@@ -8,6 +8,7 @@ from db.models import User
 from schemas.seating import (
     CreateSeatingRequest,
     GetCapacityRequest,
+    PrintStatusResponse,
     SeatingListResponse,
     StudentSeatingListResponse,
     UpdateSeatingInfoRequest,
@@ -19,8 +20,10 @@ from services.seating import (
     deactivate_seating,
     get_seating_by_id,
     get_seating_capacity,
+    get_seating_print_status,
     list_seatings_by_student_email,
     list_seatings,
+    mark_seating_printed,
     update_seating_info,
     update_seating_plan,
 )
@@ -141,6 +144,24 @@ def update_seating_plan_api(
     current_user: User = Depends(require_roles(RoleEnum.ADMIN, RoleEnum.SUPER_ADMIN)),
 ) -> dict:
     return update_seating_plan(seating_id=seating_id, args=args, actor_id=current_user.id)
+
+
+@router.get("/{seating_id}/print-status", response_model=PrintStatusResponse)
+def get_print_status_api(
+    seating_id: UUID,
+    _current_user: User = Depends(
+        require_roles(RoleEnum.ADMIN, RoleEnum.SUPER_ADMIN, RoleEnum.VIEWER)
+    ),
+) -> PrintStatusResponse:
+    return get_seating_print_status(seating_id)
+
+
+@router.post("/{seating_id}/print", response_model=PrintStatusResponse)
+def mark_printed_api(
+    seating_id: UUID,
+    current_user: User = Depends(require_roles(RoleEnum.ADMIN, RoleEnum.SUPER_ADMIN)),
+) -> PrintStatusResponse:
+    return mark_seating_printed(seating_id=seating_id, actor_id=current_user.id)
 
 
 @router.delete("/{seating_id}")

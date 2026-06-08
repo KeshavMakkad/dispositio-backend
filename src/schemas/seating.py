@@ -31,6 +31,17 @@ class SeatingListResponse(CamelCaseModel):
     seating_id: UUID
     exam_name: str
     exam_time: datetime
+    is_printed: bool = False
+    printed_at: datetime | None = None
+    # True when the plan was printed but has since been edited (printed copy is stale).
+    needs_reprint: bool = False
+
+
+class PrintStatusResponse(CamelCaseModel):
+    seating_id: UUID
+    is_printed: bool
+    printed_at: datetime | None = None
+    needs_reprint: bool = False
 
 
 class StudentSeatingListResponse(CamelCaseModel):

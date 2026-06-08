@@ -1,6 +1,6 @@
 from uuid import uuid4
 
-from sqlalchemy import UUID, Column, DateTime, Integer, JSON, String
+from sqlalchemy import UUID, Boolean, Column, DateTime, Integer, JSON, String, text
 
 from core.db_core import Base
 from utils.models import AuditColumn, IsActiveColumn, TimestampColumn
@@ -30,6 +30,13 @@ class Seating(TimestampColumn, IsActiveColumn, AuditColumn, Base):
     seating_arrangement = Column(JSON, nullable=False, default=dict)
     exam_name = Column(String(255), nullable=False)
     exam_time = Column(DateTime, nullable=False)
+    # Print tracking: is_printed flips to False whenever the plan is edited
+    # after being printed; printed_at preserves when it was last printed so the
+    # frontend can warn that a printed plan has since changed.
+    is_printed = Column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    printed_at = Column(DateTime(timezone=True), nullable=True)
 
     def __repr__(self) -> str:
         return f"<Seating {self.exam_name!r} id={self.id}>"
