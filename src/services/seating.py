@@ -309,6 +309,7 @@ def update_seating_plan(
         updated = repo.update(
             seating_id,
             seating_arrangement=args.seating_plan,
+            is_printed=False,
             updated_by=actor_id,
         )
 
@@ -316,6 +317,28 @@ def update_seating_plan(
         raise NotFoundException("Seating arrangement not found.")
 
     return {"message": "Seating plan updated successfully."}
+
+
+def mark_seating_as_printed(
+    seating_id: UUID,
+    actor_id: UUID = SYSTEM_USER_ID,
+) -> dict:
+    with get_db_session(read_only=False) as session:
+        repo = SeatingRepository(session)
+        seating = repo.get_by_id(seating_id)
+        if not seating:
+            raise NotFoundException("Seating arrangement not found.")
+
+        updated = repo.update(
+            seating_id,
+            is_printed=True,
+            updated_by=actor_id,
+        )
+
+    if not updated:
+        raise NotFoundException("Seating arrangement not found.")
+
+    return {"message": "Seating marked as printed successfully."}
 
 
 def deactivate_seating(seating_id: UUID, actor_id: UUID = SYSTEM_USER_ID) -> dict:

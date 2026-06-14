@@ -1,6 +1,6 @@
 from uuid import uuid4
 
-from sqlalchemy import UUID, Column, DateTime, Integer, JSON, String
+from sqlalchemy import UUID, Column, DateTime, Integer, JSON, String, Boolean
 
 from core.db_core import Base
 from utils.models import AuditColumn, IsActiveColumn, TimestampColumn
@@ -30,6 +30,7 @@ class Seating(TimestampColumn, IsActiveColumn, AuditColumn, Base):
     seating_arrangement = Column(JSON, nullable=False, default=dict)
     exam_name = Column(String(255), nullable=False)
     exam_time = Column(DateTime, nullable=False)
+    is_printed = Column(Boolean, nullable=False, default=False)
 
     def __repr__(self) -> str:
         return f"<Seating {self.exam_name!r} id={self.id}>"
