@@ -21,7 +21,6 @@ from services.seating import (
     get_seating_capacity,
     list_seatings_by_student_email,
     list_seatings,
-    mark_seating_as_printed,
     update_seating_info,
     update_seating_plan,
 )
@@ -143,12 +142,6 @@ def update_seating_plan_api(
 ) -> dict:
     return update_seating_plan(seating_id=seating_id, args=args, actor_id=current_user.id)
 
-@router.put("/{seating_id}/print-status")
-def mark_seating_as_printed_api(
-    seating_id: UUID,
-    current_user: User = Depends(require_roles(RoleEnum.ADMIN, RoleEnum.SUPER_ADMIN)),
-) -> dict:
-    return mark_seating_as_printed(seating_id=seating_id, actor_id=current_user.id)
 
 @router.delete("/{seating_id}")
 def delete_seating_api(
