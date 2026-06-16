@@ -41,8 +41,9 @@ class StudentSeatingListResponse(CamelCaseModel):
 
 
 class UpdateSeatingInfoRequest(CamelCaseModel):
-    exam_name: str
-    exam_time: datetime
+    exam_name: str | None = None
+    exam_time: datetime | None = None
+    is_printed: bool | None = False
 
 
 class UpdateSeatingPlanRequest(CamelCaseModel):
