@@ -282,12 +282,20 @@ def update_seating_info(
         if not seating:
             raise NotFoundException("Seating arrangement not found.")
 
-        updated = repo.update(
-            seating_id,
-            exam_name=args.exam_name,
-            exam_time=to_ist_naive(args.exam_time),
-            updated_by=actor_id,
-        )
+        if args.is_printed is not None:
+            updated = repo.update(
+                seating_id,
+                is_printed=args.is_printed,
+                updated_by=actor_id,
+            )
+        else:
+            updated = repo.update(
+                seating_id,
+                exam_name=args.exam_name,
+                exam_time=to_ist_naive(args.exam_time),
+                is_printed=False,
+                updated_by=actor_id,
+            )
 
     if not updated:
         raise NotFoundException("Seating arrangement not found.")
@@ -309,6 +317,7 @@ def update_seating_plan(
         updated = repo.update(
             seating_id,
             seating_arrangement=args.seating_plan,
+            is_printed=False,
             updated_by=actor_id,
         )
 
