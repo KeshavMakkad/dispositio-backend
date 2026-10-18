@@ -1,0 +1,55 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: dispositio
+  namespace: monitoring
+spec:
+  groups:
+    - name: dispositio
+      rules:
+        - record: dispositio:requests:rate5m
+          expr: sum(rate(traefik_service_requests_total{service=~"dispositio-dispositio-.*"}[5m]))
+        - record: dispositio:error_ratio:rate5m
+          expr: |
+            (sum(rate(traefik_service_requests_total{service=~"dispositio-dispositio-.*",code=~"5.."}[5m])) or vector(0))
+            /
+            clamp_min(sum(rate(traefik_service_requests_total{service=~"dispositio-dispositio-.*"}[5m])), 1e-9)
+        - record: dispositio:latency_p95:rate5m
+          expr: |
+            histogram_quantile(0.95, sum by (le) (rate(traefik_service_request_duration_seconds_bucket{service=~"dispositio-dispositio-.*"}[5m])))
+
+        - alert: DispositioHighErrorRate
+          expr: dispositio:error_ratio:rate5m > 0.01
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: More than 1% of requests to the API are failing with 5xx
+            description: "Error ratio is {{ $value | humanizePercentage }}."
+        - alert: DispositioHighLatency
+          expr: dispositio:latency_p95:rate5m > 0.5
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: p95 latency of the API is above 500ms
+        - alert: DispositioDown
+          expr: sum(kube_deployment_status_replicas_available{namespace="dispositio",deployment="dispositio"}) == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: No API pods are available
+        - alert: DispositioPodRestarting
+          expr: increase(kube_pod_container_status_restarts_total{namespace="dispositio"}[15m]) > 3
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.pod }} restarted more than 3 times in 15 minutes"
+        - alert: PostgresDown
+          expr: kube_statefulset_status_replicas_ready{namespace="dispositio",statefulset="postgres"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: Postgres has no ready replica
