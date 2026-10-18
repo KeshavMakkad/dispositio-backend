@@ -18,10 +18,16 @@ fi
 if kn get secret dispositio-secrets >/dev/null 2>&1; then
   info "dispositio-secrets already exists; keeping it"
 else
+  if [[ -n "${SHEETS_API_KEY:-}" ]]; then
+    sheets_key="$SHEETS_API_KEY"
+  else
+    sheets_key="$(random)"
+    info "SHEETS_API_KEY not set; using a random key. Google Sheets sync will not work until the real key is set"
+  fi
   args=(--from-literal=DB_USER=dispositio
         --from-literal=DB_PASSWORD="$db_password"
         --from-literal=JWT_SECRET="$(random)"
-        --from-literal=SHEETS_API_KEY="$(random)")
+        --from-literal=SHEETS_API_KEY="$sheets_key")
   if [[ -n "${SUPABASE_JWT_SECRET:-}" ]]; then
     args+=(--from-literal=SUPABASE_JWT_SECRET="$SUPABASE_JWT_SECRET")
   fi
