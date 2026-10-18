@@ -11,10 +11,7 @@ fi
 
 if [[ "${SKIP_BUILD:-0}" != 1 ]]; then
   info "Building ${IMAGE_REPO}:${TAG}"
-  docker build -t "${IMAGE_REPO}:${TAG}" \
-    --build-arg GIT_SHA="$TAG" \
-    --build-arg BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    "$ROOT" >/dev/null
+  docker build -t "${IMAGE_REPO}:${TAG}" --build-arg GIT_SHA="$TAG" "$ROOT" >/dev/null
   k3d image import "${IMAGE_REPO}:${TAG}" --cluster "$CLUSTER" >/dev/null
 fi
 
