@@ -23,7 +23,7 @@ empty. There was no CI, no Kubernetes, no monitoring and no security scanning.
 - GitHub Actions running tests, secret, code, dependency and image scans, and an approval-gated image push;
 - upgraded dependencies with known CVEs.
 
-The application code itself is unchanged. See [docs/DECISIONS.md](docs/DECISIONS.md) for the reasoning and the runbook.
+The application code itself is unchanged, apart from a lock in `src/alembic/env.py` so two pods can't run migrations at the same time.
 
 ## Prerequisites
 
@@ -76,3 +76,11 @@ Local run without Kubernetes: copy `.env.template` to `.env`, fill it in, then `
 3. **helm:** lint both charts with development and production values
 4. **build:** image tagged with the short commit SHA, Trivy scan (blocks on fixable HIGH/CRITICAL)
 5. **publish** (`master` only): waits for approval on the `production` environment, then pushes the scanned image to GHCR
+
+## Known limitations
+
+- only one Postgres pod, no backups. if it goes down, the app goes down.
+- health check doesn't check the database, so the app stays "ready" even when Postgres is down.
+- metrics come from Traefik only, no tracing inside the app.
+- alerts are not sent anywhere (no Slack or email).
+- self-signed certificate, so browsers show a warning.
