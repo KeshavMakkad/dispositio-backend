@@ -1,7 +1,7 @@
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import text
+
 
 from core.db_core import engine, Base, DB_SCHEMA
 from alembic import context
@@ -12,6 +12,8 @@ from db import enum  # noqa: F401
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+
+MIGRATION_LOCK_KEY = 7_340_212
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -65,6 +67,8 @@ def run_migrations_online() -> None:
     connectable = engine
 
     with connectable.connect() as connection:
+        connection.execute(text("SELECT pg_advisory_lock(:key)"), {"key": MIGRATION_LOCK_KEY})
+        connection.commit()
         context.configure(
             connection=connection,
             target_metadata=target_metadata,

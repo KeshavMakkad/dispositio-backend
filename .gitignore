@@ -1,16 +1,27 @@
 # Environments
 .env
+.env.*
+!.env.template
 .venv
+*.pem
+*.key
+secrets/
 
 # Python cache files
 __pycache__/
 *.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
 
 # IDE files
 .vscode/
+.DS_Store
 
 tests/__pycache__/
 tests/*.json*
 tests/*.csv
 
 FRONTEND_API_PROMPT_DOC.md
+local.svg
